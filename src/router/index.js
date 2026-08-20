@@ -16,6 +16,12 @@ const router = createRouter({
       component: () => import('../views/CompositionView.vue'),
     },
     {
+      path: '/component',
+      name: 'component',
+      // 교재 178p Hands on - Weather Component
+      component: () => import('../views/ComponentView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting

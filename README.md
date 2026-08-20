@@ -59,7 +59,13 @@ src/
 └── components/
     └── handson/
         ├── WeatherMockup.vue        # 교재 116p 과제 (Vue Syntax)
-        └── WeatherComposition.vue   # 교재 145p 과제 (Composition API)
+        ├── WeatherComposition.vue   # 교재 145p 과제 (Composition API)
+        └── weather/                 # 교재 178p 과제 (Vue Components)
+            ├── WeatherParent.vue        # 모든 반응형 데이터 보유
+            ├── BaseDashboardCard.vue    # 디자인 공통화 + slot
+            ├── SearchBar.vue            # props / emits
+            ├── WeatherCard.vue          # props / emits
+            └── StatSummary.vue          # 표시 전용 (본인 추가)
 docs/screenshots/                    # README용 화면 캡처
 .github/workflows/deploy.yml         # GitHub Pages 자동 배포
 ```
@@ -202,6 +208,46 @@ return weatherList.value.filter((city) => { ... })
 
 - **`watch` 콜백에서 `oldVal` 을 받습니다.** 교재 130p 가 `(newVal, oldVal)` 을 가르쳤고, 상태 전이를 로그로 남기는 쪽이 디버깅에 유용하다고 판단했습니다.
 - **검색 상태를 3분기로 나눴습니다.** 요구사항 4가 "검색어가 비었을 때는 원본 출력"을 별도 항목으로 명시했기 때문입니다.
+
+#### 교재 178p — Weather Component (Day 3 오후)
+
+145p 버전을 **기능 변경 없이** 5개 컴포넌트로 분리했습니다. 화면과 동작은 동일하고 바뀐 것은 **책임의 배치**뿐입니다.
+
+| 파일                    | 역할                                     | 통신                                               |
+| ----------------------- | ---------------------------------------- | -------------------------------------------------- |
+| `WeatherParent.vue`     | 모든 반응형 데이터·computed·watcher 보유 | —                                                  |
+| `BaseDashboardCard.vue` | 검색박스·리스트박스 디자인 공통화        | `<slot>` (named + default)                         |
+| `SearchBar.vue`         | 검색 입력                                | props `search-query` / emits `update-query`        |
+| `WeatherCard.vue`       | 도시 카드 1장                            | props `city` / emits `select-card`, `click-detail` |
+| `StatSummary.vue`       | 요약 통계 (본인 추가)                    | props만, emits 없음                                |
+
+**단방향 데이터 흐름** — 자식은 아무도 상태를 갖지 않고, 전부 부모에게 emit으로 요청합니다.
+
+```
+WeatherParent  ← 상태의 유일한 주인
+  │ props ↓        emits ↑
+  ├── SearchBar    :search-query → @update-query
+  ├── WeatherCard  :city :selected → @select-card / @click-detail
+  └── StatSummary  :count :average-temp  (표시 전용)
+```
+
+**요구사항 6 — slot 자식은 누구의 스코프인가**
+
+```html
+<BaseDashboardCard>
+  <SearchBar :search-query="searchQuery" @update-query="handleUpdateQuery" />
+</BaseDashboardCard>
+```
+
+`SearchBar`는 시각적으로 `BaseDashboardCard` 안에 있지만, `searchQuery`와 핸들러는 `WeatherParent`의 것입니다. slot으로 전달되는 콘텐츠는 **부모 스코프에서 컴파일·평가**되기 때문입니다. 이게 아니었다면 `BaseDashboardCard`가 `searchQuery`를 받아 다시 넘기는 props drilling이 필요했을 것입니다.
+
+**분리하고 나서 `.stop`이 더 중요해진 이유**
+
+`[상세보기]` 버튼이 카드 안에 있어, `.stop`이 없으면 `click-detail`과 `select-card` 두 이벤트가 **동시에 부모로 올라갑니다.** 분리 전에는 같은 파일 안의 문제였지만 이제는 부모가 원치 않는 이벤트를 두 개 받는 문제가 됩니다.
+
+**요구사항 7 — 본인 추가 컴포넌트**
+
+`StatSummary.vue`는 계산도 상태도 갖지 않고 받은 숫자를 보여주기만 하는 **표시 전용(Presentational) 컴포넌트**입니다. `averageTemp` 계산은 부모의 computed가 담당합니다 — 계산 책임과 표시 책임의 분리.
 
 ### Day 4 (08/21) — 예정
 

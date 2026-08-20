@@ -29,6 +29,7 @@ import { RouterLink, RouterView } from 'vue-router'
     <nav>
       <RouterLink to="/">날씨 대시보드</RouterLink>
       <RouterLink to="/composition">Composition</RouterLink>
+      <RouterLink to="/component">Component</RouterLink>
       <RouterLink to="/about">소개</RouterLink>
     </nav>
   </header>
