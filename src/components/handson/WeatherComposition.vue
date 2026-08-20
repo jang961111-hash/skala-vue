@@ -3,7 +3,7 @@
   교재 145p | Hands on - Weather Composition  (과제)
   ================================================================
   SKALA Full-Stack Engineering / Frontend-framework: Vue.js
-  강병호 강사님 · 2026-08-20 (Day3)
+  강병호 교수님 · 2026-08-20 (Day3)
 
   ▸ 116p Weather Mockup 을 Composition API 로 다시 쓴 것이다.
     화면 결과는 같지만, 파생 데이터와 부수효과 처리 방식이 바뀐다.
@@ -168,7 +168,7 @@ const filteredWeatherList = computed(() => {
   // ▸ Early return — 걸러낼 조건이 하나도 없으면 배열 순회 자체를 건너뛴다.
   //   ''.includes('') 는 항상 true 라 filter 를 돌려도 결과는 같지만,
   //   6건이든 600건이든 매번 전체를 훑는 것과 원본 참조를 그대로 돌려주는 것은 다르다.
-  //   (강사님 참조 구현과 대조하면서 배운 지점 — 처음엔 무조건 filter 를 돌렸다)
+  //   (교수님 참조 구현과 대조하면서 배운 지점 — 처음엔 무조건 filter 를 돌렸다)
   if (!query && !onlyRainy.value) {
     return weatherList.value
   }

@@ -3,7 +3,7 @@
   교재 116p | Hands on - Weather Mockup  (과제)
   ================================================================
   SKALA Full-stack Engineering / Frontend-framework: Vue.js
-  강병호 강사님 · 2026-08-19 (Day2)
+  강병호 교수님 · 2026-08-19 (Day2)
 
   ▸ 이 컴포넌트에서 쓴 문법은 전부 교재 60p~115p 범위 안입니다.
     (computed / watch 등 Composition API는 117p 이후라 일부러 안 썼습니다)

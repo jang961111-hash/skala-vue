@@ -72,7 +72,7 @@ const extras = ref([
       <p class="kicker">SKALA Full-Stack Engineering</p>
       <h1>Frontend-framework: Vue.js</h1>
       <p class="desc">
-        강병호 강사님 강의 실습 저장소입니다. 교재 116p
+        강병호 교수님 강의 실습 저장소입니다. 교재 116p
         <b>Hands on — Weather Mockup</b> 과제를 중심으로, 단원별 실습 내용과 개인 커스터마이징
         내역을 기록합니다.
       </p>
