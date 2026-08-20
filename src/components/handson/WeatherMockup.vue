@@ -95,10 +95,11 @@ const weatherList = ref([
      "이벤트를 발생시킨 태그" = 여기서는 <input> 자신.
      그래서 e.target.value 가 사용자가 입력한 값이 된다.
    ================================================================ */
-const searchKeyword = ref('')
+// ※ 변수명은 교재 규격을 따랐다. 144p/177p/196p 과제가 이 이름을 그대로 이어받는다.
+const searchQuery = ref('')
 
 const handleSearchInput = (e) => {
-  searchKeyword.value = e.target.value
+  searchQuery.value = e.target.value
 }
 
 /* ================================================================
@@ -109,10 +110,10 @@ const handleSearchInput = (e) => {
      인자가 없을 때만 @click="함수명" 처럼 괄호 없이 "참조를 등록"한다.
      (교재 95p 참고사항 - 함수 참조 전달 방식)
    ================================================================ */
-const selectedCity = ref('')
+const selectedCityInfo = ref('')
 
 const selectCity = (cityName) => {
-  selectedCity.value = cityName
+  selectedCityInfo.value = cityName
 }
 
 /* ================================================================
@@ -127,6 +128,8 @@ const selectCity = (cityName) => {
      결과: alert 도 뜨고 상태바도 같이 바뀌는 이중 발동.
      .stop 은 내부적으로 e.stopPropagation() 을 대신 호출해 준다.
    ================================================================ */
+// 🔜 [교재 196p Weather Router 과제]
+//    window.alert 을 제거하고 router.push('/weather/' + id) 로 대체할 예정.
 const showDetail = (cityName, status) => {
   window.alert(`${cityName}의 현재 날씨는 [${status}] 상태입니다.`)
 }
@@ -152,10 +155,13 @@ const showDetail = (cityName, status) => {
 const onlyRainy = ref(false)
 
 // (1)(2) 검색어 + 비 필터를 통과한 목록만 반환
+// 🔜 [교재 144p Weather Composition 과제]
+//    이 함수는 computed 로 바꾸고 이름도 filteredWeatherList 로 변경할 예정.
+//    computed 는 의존 값이 바뀔 때만 재계산 + 캐시하므로 매 렌더링 재실행이 사라진다.
 const getFilteredList = () => {
   return weatherList.value.filter((city) => {
     // 검색어가 비어 있으면 전부 통과, 아니면 도시명에 포함되는지 검사
-    const matchKeyword = city.name.includes(searchKeyword.value.trim())
+    const matchKeyword = city.name.includes(searchQuery.value.trim())
     // 체크박스가 꺼져 있으면 전부 통과, 켜져 있으면 '비'인 도시만
     const matchRainy = !onlyRainy.value || city.status === '비'
     return matchKeyword && matchRainy
@@ -204,7 +210,7 @@ const getStatusEmoji = (status) => {
           id="citySearch"
           type="text"
           placeholder="도시 이름으로 검색 (예: 서울, 부산)"
-          :value="searchKeyword"
+          :value="searchQuery"
           @input="handleSearchInput"
         />
       </div>
@@ -212,7 +218,7 @@ const getStatusEmoji = (status) => {
       <!-- 입력한 도시명을 그대로 출력 (요구사항 3의 "출력한다" 부분) -->
       <p class="echo">
         입력한 도시명:
-        <strong>{{ searchKeyword === '' ? '(아직 입력 없음)' : searchKeyword }}</strong>
+        <strong>{{ searchQuery === '' ? '(아직 입력 없음)' : searchQuery }}</strong>
       </p>
 
       <!-- [요구사항 5-(2)] 여기는 폼 요소이므로 v-model 을 써도 된다 (교재 108p)
@@ -231,8 +237,8 @@ const getStatusEmoji = (status) => {
          v-else 와 짝을 지어야 하는데 v-show 는 v-else 를 못 쓴다. (교재 86p)
          ============================================================ -->
     <section class="selection-banner">
-      <p v-if="selectedCity" class="active">
-        📍 <strong>{{ selectedCity }}</strong
+      <p v-if="selectedCityInfo" class="active">
+        📍 <strong>{{ selectedCityInfo }}</strong
         >이 선택되었습니다.
       </p>
       <p v-else class="muted">카드를 클릭하면 여기에 선택한 도시가 표시됩니다.</p>
@@ -264,7 +270,7 @@ const getStatusEmoji = (status) => {
         :key="city.id"
         class="weather-tile"
         :class="{
-          'is-selected': selectedCity === city.name,
+          'is-selected': selectedCityInfo === city.name,
           'is-hot': city.temp >= 25,
           'is-cool': city.temp < 25,
         }"

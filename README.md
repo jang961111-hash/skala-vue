@@ -4,7 +4,16 @@ SKALA Full-Stack Engineering — **Frontend-framework: Vue.js** (강병호 강�
 
 - **소스코드**: https://github.com/jang961111-hash/skala-vue
 - **배포**: https://jang961111-hash.github.io/skala-vue/
-- **스택**: Vue 3.5 (Composition API) · Vite 8 · Vue Router 5 · Pinia 3 · ESLint + Prettier
+- **스택**: Vue 3.5 (`<script setup>` + Composition API) · Vite 8 · Vue Router 5 · ESLint + Prettier
+- **설치돼 있으나 아직 미사용**: Pinia 3 (교재 store 단원에서 사용 예정)
+
+## 화면
+
+| 대시보드 (`/`)                                 | 검색 필터                                      | 소개 (`/about`)                        |
+| ---------------------------------------------- | ---------------------------------------------- | -------------------------------------- |
+| ![대시보드](docs/screenshots/01-dashboard.jpg) | ![검색](docs/screenshots/02-search-filter.jpg) | ![소개](docs/screenshots/03-about.jpg) |
+
+배포본에서 직접 확인: <https://jang961111-hash.github.io/skala-vue/>
 
 ---
 
@@ -39,13 +48,32 @@ src/
 ├── main.js                          # createApp → Pinia/Router 등록 → mount('#app')
 ├── App.vue                          # Root Component (nav + RouterView)
 ├── router/index.js                  # 라우트 정의
+├── assets/
+│   ├── base.css                     # 리셋/변수
+│   └── main.css                     # 전역 스타일 (스캐폴드 2단 grid 제거)
+├── stores/counter.js                # create-vue 기본 store — 아직 미사용 (store 단원에서 교체 예정)
 ├── views/
 │   ├── HomeView.vue                 # "/" → WeatherMockup 마운트
-│   └── AboutView.vue                # "/about"
+│   └── AboutView.vue                # "/about" 소개 페이지
 └── components/
     └── handson/
         └── WeatherMockup.vue        # 교재 116p 과제 본체
+docs/screenshots/                    # README용 화면 캡처
+.github/workflows/deploy.yml         # GitHub Pages 자동 배포
 ```
+
+create-vue 스캐폴드가 만들어 준 예제 컴포넌트(`HelloWorld` / `TheWelcome` / `WelcomeItem` / `icons/*`)는 사용하지 않으므로 삭제했습니다.
+
+### 사용 중인 Vue API
+
+전 컴포넌트가 `<script setup>` 기반 **Composition API** 로 작성돼 있습니다.
+
+| API              | 사용처                                                                                                                                       |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ref()`          | `WeatherMockup.vue` (`weatherList` / `searchQuery` / `selectedCityInfo` / `onlyRainy`), `AboutView.vue` (`requirements` / `extras`) — 총 7곳 |
+| `<script setup>` | 모든 `.vue` 파일                                                                                                                             |
+
+`computed` / `watch` 는 교재 진도상 아직 학습 전이라 의도적으로 쓰지 않았습니다. (아래 "의도적으로 쓰지 않은 것" 참고)
 
 ---
 
@@ -65,19 +93,21 @@ src/
 
 #### 요구사항 대비 구현
 
-| #   | 요구사항                  | 구현                                                                      | 교재      |
-| --- | ------------------------- | ------------------------------------------------------------------------- | --------- |
-| 1   | 배열 렌더링 (`v-for`)     | `weatherList` 배열을 카드로 반복 출력, `:key="city.id"` 바인딩            | 88p       |
-| 2   | 조건부 렌더링 (`v-if`)    | 25도 기준 `🔥 더움` / `❄️ 선선함` 라벨 분기                               | 84p       |
-| 3   | 양방향 바인딩 · 한글 처리 | `:value` + `@input` 조합으로 한글 도시 검색                               | 106p      |
-| 4   | 이벤트 및 수식어          | 카드 `@click` → 상태바 표기 / `[상세보기]` `@click.stop` → `window.alert` | 96p, 102p |
-| 5   | 본인 데이터 추가          | 아래 "개인 확장" 참고                                                     | —         |
+| #   | 요구사항               | 구현                                                                      | 교재      |
+| --- | ---------------------- | ------------------------------------------------------------------------- | --------- |
+| 1   | 배열 렌더링 (`v-for`)  | `weatherList` 배열을 카드로 반복 출력, `:key="city.id"` 바인딩            | 88p       |
+| 2   | 조건부 렌더링 (`v-if`) | 25도 기준 `🔥 더움` / `❄️ 선선함` 라벨 분기                               | 84p       |
+| 3   | 입력 바인딩 (IME 대응) | `:value` + `@input` 조합으로 한글 도시 검색                               | 106p      |
+| 4   | 이벤트 및 수식어       | 카드 `@click` → 상태바 표기 / `[상세보기]` `@click.stop` → `window.alert` | 96p, 102p |
+| 5   | 본인 데이터 추가       | 아래 "개인 확장" 참고                                                     | —         |
 
 #### 요구사항 3을 `v-model` 대신 `:value` + `@input` 으로 쓴 이유
 
 교재 요구사항에 명시된 방식이며, 한글 입력과 직결됩니다.
 `v-model` 은 내부에 IME 조합(composition) 가드를 갖고 있어, `ㅅ → 서 → 설` 처럼 자모가 모여 한 글자가 완성될 때까지 변수 갱신을 미룹니다.
 반면 `:value` + `@input` 은 조합 중인 자모까지 실시간으로 잡아내므로, 검색어 자동완성처럼 "치는 즉시" 반응해야 하는 UI 에 맞습니다.
+
+같은 문서 안에서 "비 오는 지역만 보기" 체크박스에는 `v-model` 을 그대로 씁니다. 체크박스는 문자 입력이 아니라 boolean 토글이라 IME 조합 자체가 없기 때문입니다. 즉 `v-model` 을 피한 것이 아니라, **IME 가 개입하는 텍스트 입력에서만** 피한 것입니다.
 
 #### 요구사항 4의 `.stop` 이 필요한 이유
 
@@ -116,6 +146,28 @@ src/
 `computed` 는 의존 값이 바뀔 때만 재계산하고 결과를 캐시하지만, 일반 함수는 렌더링마다 매번 재실행되어 비효율적입니다.
 다만 `computed` 는 교재 117p 이후(Composition API) 내용이라, **Day 2 범위(60p~116p) 문법만으로 구현**하기 위해 일반 함수로 대체했습니다.
 해당 단원 학습 후 리팩터링할 지점으로 코드 주석에 표시해 두었습니다.
+
+### Day 3 (08/20) — 진행 중
+
+_수업 진행에 따라 채웁니다._
+
+### Day 4 (08/21) — 예정
+
+_수업 진행에 따라 채웁니다._
+
+---
+
+## 앞으로의 계획 (교재 기준)
+
+남은 과제 3개는 모두 **이 Weather 앱을 이어서 고치는 것**이라, 현재 코드를 그 전제에 맞춰 두었습니다.
+
+| 교재 | 과제                    | 이 저장소에서 바뀔 것                                                                                                             |
+| ---- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| 144p | Weather **Composition** | `getFilteredList()` → `computed` 인 `filteredWeatherList` 로 교체, `watch` / `watchEffect` 추가                                   |
+| 177p | Weather **Component**   | 4개 파일로 분리 — `WeatherParent` / `BaseDashboardCard`(`<slot>`) / `SearchBar`(`props`·`emits`) / `WeatherCard`(`props`·`emits`) |
+| 196p | Weather **Router**      | 동적 라우트 `/weather/:cityId`, 지연 로딩, Catch-all(`NotFoundView`), `window.alert` → `router.push`                              |
+
+이를 위해 **변수명을 교재 규격에 미리 맞춰 두었습니다** (`searchQuery`, `selectedCityInfo`, `weatherList`). 교체 지점에는 코드 주석으로 `🔜 [교재 NNNp ...]` 표시를 남겨 두었습니다.
 
 ---
 
