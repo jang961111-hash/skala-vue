@@ -54,10 +54,12 @@ src/
 ├── stores/counter.js                # create-vue 기본 store — 아직 미사용 (store 단원에서 교체 예정)
 ├── views/
 │   ├── HomeView.vue                 # "/" → WeatherMockup 마운트
+│   ├── CompositionView.vue          # "/composition" → WeatherComposition 마운트
 │   └── AboutView.vue                # "/about" 소개 페이지
 └── components/
     └── handson/
-        └── WeatherMockup.vue        # 교재 116p 과제 본체
+        ├── WeatherMockup.vue        # 교재 116p 과제 (Vue Syntax)
+        └── WeatherComposition.vue   # 교재 145p 과제 (Composition API)
 docs/screenshots/                    # README용 화면 캡처
 .github/workflows/deploy.yml         # GitHub Pages 자동 배포
 ```
@@ -147,9 +149,59 @@ create-vue 스캐폴드가 만들어 준 예제 컴포넌트(`HelloWorld` / `The
 다만 `computed` 는 교재 117p 이후(Composition API) 내용이라, **Day 2 범위(60p~116p) 문법만으로 구현**하기 위해 일반 함수로 대체했습니다.
 해당 단원 학습 후 리팩터링할 지점으로 코드 주석에 표시해 두었습니다.
 
-### Day 3 (08/20) — 진행 중
+### Day 3 (08/20) — Composition API (117p ~ 145p)
 
-_수업 진행에 따라 채웁니다._
+**교재 145p Hands on: Weather Composition** 을 `src/components/handson/WeatherComposition.vue` 로 구현했습니다.
+116p 버전을 지우지 않고 `/composition` 라우트에 나란히 두어, 같은 화면이 어떻게 달라지는지 비교할 수 있게 했습니다.
+
+#### 116p 버전과 무엇이 달라졌나
+
+| 116p (`/`)                    | 145p (`/composition`)                      | 교재       |
+| ----------------------------- | ------------------------------------------ | ---------- |
+| `getFilteredList()` 일반 함수 | `filteredWeatherList` **computed**         | 127p       |
+| `getAverageTemp()` 일반 함수  | `averageTemp` **computed**                 | 127p       |
+| (없음)                        | `watch` 로 `selectedCityInfo` 감시         | 130p       |
+| (없음)                        | `watchEffect` 로 `searchQuery` 추적        | 141p       |
+| 빈 상태 2분기                 | 검색 상태 **3분기** (빈검색어/일치/불일치) | 요구사항 4 |
+
+일반 함수는 화면이 다시 그려질 때마다 매번 재실행되지만, `computed` 는 의존하는 반응형 데이터가 바뀔 때만 재계산하고 나머지는 캐싱된 값을 돌려줍니다.
+
+#### `watch` 와 `watchEffect` 를 나눠 쓴 기준
+
+요구사항이 둘 다 쓰라고 명시했는데, 용도가 실제로 갈립니다.
+
+- **`watch(selectedCityInfo, (newVal, oldVal) => ...)`** — 감시 대상을 명시하고 **이전 값**을 받습니다. 그래서 `"서울" → "제주"` 처럼 어디에서 어디로 옮겨갔는지를 로그로 남길 수 있습니다.
+- **`watchEffect(() => ...)`** — 콜백 안에서 접근한 반응형 데이터를 자동 추적합니다. 이전 값은 주지 않고, **컴포넌트 생성 시 최초 1회 즉시 실행**됩니다. 검색어처럼 "지금 값이 뭔지"만 필요할 때 맞습니다.
+
+즉 **"무엇이 무엇으로 바뀌었나"가 필요하면 `watch`, "지금 값이 이렇다"만 필요하면 `watchEffect`** 입니다.
+
+#### 개인 확장 (요구사항 5)
+
+| 추가           | 종류     | 내용                                                                                       |
+| -------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `averageTemp`  | computed | 표시 중인 도시들의 평균 기온. `filteredWeatherList` 를 의존하는 **computed 위의 computed** |
+| `searchState`  | computed | 검색 상태를 `empty` / `found` / `notfound` 로 미리 분류해 template 조건을 단순화           |
+| 결과 소멸 감지 | watch    | `filteredWeatherList.length` 를 감시해, 검색 결과가 0건이 되는 **순간**만 경고 로그        |
+
+#### 구현 후 참조 구현과 대조하며 고친 것
+
+먼저 교재만 보고 구현한 뒤 강사님 참조 구현과 비교했습니다. 골격(변수명·computed·watcher 구성)은 일치했고, 한 군데를 고쳤습니다.
+
+```js
+// 처음 작성한 것 — 항상 filter 를 돌림
+return weatherList.value.filter((city) => { ... })
+
+// 고친 것 — 걸러낼 조건이 없으면 순회 자체를 건너뜀
+if (!query && !onlyRainy.value) return weatherList.value
+return weatherList.value.filter((city) => { ... })
+```
+
+`''.includes('')` 가 항상 `true` 라 결과는 같지만, 검색어가 비어 있는 기본 상태에서 매번 전체 배열을 훑을 이유가 없습니다. 데이터가 늘어날수록 차이가 벌어지는 지점입니다.
+
+그 외에 의도적으로 다르게 유지한 것:
+
+- **`watch` 콜백에서 `oldVal` 을 받습니다.** 교재 130p 가 `(newVal, oldVal)` 을 가르쳤고, 상태 전이를 로그로 남기는 쪽이 디버깅에 유용하다고 판단했습니다.
+- **검색 상태를 3분기로 나눴습니다.** 요구사항 4가 "검색어가 비었을 때는 원본 출력"을 별도 항목으로 명시했기 때문입니다.
 
 ### Day 4 (08/21) — 예정
 
@@ -159,7 +211,7 @@ _수업 진행에 따라 채웁니다._
 
 ## 앞으로의 계획 (교재 기준)
 
-남은 과제 3개는 모두 **이 Weather 앱을 이어서 고치는 것**이라, 현재 코드를 그 전제에 맞춰 두었습니다.
+남은 과제는 모두 **이 Weather 앱을 이어서 고치는 것**이라, 현재 코드를 그 전제에 맞춰 두었습니다.
 
 | 교재 | 과제                    | 이 저장소에서 바뀔 것                                                                                                             |
 | ---- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |

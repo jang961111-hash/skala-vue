@@ -10,6 +10,12 @@ const router = createRouter({
       component: HomeView,
     },
     {
+      path: '/composition',
+      name: 'composition',
+      // 교재 145p Hands on - Weather Composition
+      component: () => import('../views/CompositionView.vue'),
+    },
+    {
       path: '/about',
       name: 'about',
       // route level code-splitting
