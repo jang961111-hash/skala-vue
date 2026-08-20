@@ -1,6 +1,6 @@
 # skala-vue
 
-SKALA Full-Stack Engineering — **Frontend-framework: Vue.js** (강병호 강사님, 2026.08.18 ~ 08.21) 실습/과제 저장소입니다.
+SKALA Full-Stack Engineering — **Frontend-framework: Vue.js** (강병호 교수님, 2026.08.18 ~ 08.21) 실습/과제 저장소입니다.
 
 - **소스코드**: https://github.com/jang961111-hash/skala-vue
 - **배포**: https://jang961111-hash.github.io/skala-vue/
