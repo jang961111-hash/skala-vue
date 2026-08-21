@@ -27,6 +27,16 @@
   ================================================================
 -->
 <script setup>
+import { computed } from 'vue'
+import { useConfigStore } from '../../../stores/configStore.js'
+import { useFavoriteStore } from '../../../stores/favoriteStore.js'
+
+// 교재 212p 요구사항 3 — 스토어를 직접 읽는다.
+// 부모가 단위를 props 로 내려줄 필요가 없다. 네비게이션 바의 UnitToggler 와
+// 이 카드는 부모-자식이 아니지만 같은 스토어를 본다.
+const configStore = useConfigStore()
+const favoriteStore = useFavoriteStore()
+
 // script 안에서 props 에 접근하려면 반환값을 변수에 담아야 한다 (교재 162p)
 // template 안에서는 props. 없이 city 로 바로 쓴다
 const props = defineProps({
@@ -40,7 +50,17 @@ const props = defineProps({
   },
 })
 
+// 교재 212p 요구사항 3 — 현재 단위로 변환된 표시용 기온
+// 변환 로직은 configStore.convertTemp 하나에 모아 두어 메인/상세 중복을 없앴다.
+const displayTemp = computed(() => configStore.convertTemp(props.city.temp))
+const displayFeels = computed(() => configStore.convertTemp(props.city.feelsLike))
+
 const emit = defineEmits(['select-card', 'click-detail'])
+
+// [요구사항 4] 즐겨찾기 토글 — 카드 클릭으로 번지지 않도록 .stop 을 건다
+const onToggleFavorite = () => {
+  favoriteStore.toggleFavorite(props.city.id)
+}
 
 const onSelect = () => {
   emit('select-card', props.city.name)
@@ -63,7 +83,16 @@ const onDetail = () => {
   >
     <div class="tile-head">
       <h4>{{ city.name }}</h4>
-      <span class="temp-badge">{{ city.temp }}℃</span>
+      <button
+        type="button"
+        class="fav"
+        :class="{ on: favoriteStore.isFavorite(city.id) }"
+        :title="favoriteStore.isFavorite(city.id) ? '즐겨찾기 해제' : '즐겨찾기 추가'"
+        @click.stop="onToggleFavorite"
+      >
+        {{ favoriteStore.isFavorite(city.id) ? '★' : '☆' }}
+      </button>
+      <span class="temp-badge">{{ displayTemp }}{{ configStore.unitSymbol }}</span>
     </div>
 
     <p class="status">현재 상태 · {{ city.status }}</p>
@@ -73,7 +102,7 @@ const onDetail = () => {
     <span v-else class="label label-cool">❄️ 선선함 (25도 미만)</span>
 
     <ul class="chips">
-      <li>🌡️ 체감 {{ city.feelsLike }}℃</li>
+      <li>🌡️ 체감 {{ displayFeels }}{{ configStore.unitSymbol }}</li>
       <li>💧 습도 {{ city.humidity }}%</li>
       <li>💨 풍속 {{ city.wind }}m/s</li>
     </ul>
@@ -84,6 +113,23 @@ const onDetail = () => {
 </template>
 
 <style scoped>
+.fav {
+  margin-left: auto;
+  margin-right: 4px;
+  padding: 0 4px;
+  font-size: 1.05rem;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  opacity: 0.35;
+  cursor: pointer;
+}
+.fav.on {
+  color: #f59e0b;
+  opacity: 1;
+}
+
 /* 요구사항 5: 카드 디자인은 이 파일이 책임진다 */
 .weather-tile {
   padding: 14px 16px;

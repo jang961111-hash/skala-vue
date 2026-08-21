@@ -25,9 +25,16 @@
   ================================================================
 -->
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { findCityById } from '../data/weatherMockData.js'
+import { useConfigStore } from '../stores/configStore.js'
+import { useFavoriteStore } from '../stores/favoriteStore.js'
+
+// 교재 212p 요구사항 3 — 상세 페이지에도 같은 단위 설정이 적용된다.
+// 목록 화면과 이 화면은 라우터로 갈린 남남이지만 같은 스토어를 본다.
+const configStore = useConfigStore()
+const favoriteStore = useFavoriteStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -52,6 +59,12 @@ onMounted(() => {
 // 단, 주소창에 직접 URL 을 치고 들어온 경우 돌아갈 기록이 없을 수 있어
 // push 로 목록으로 보내는 편이 안전하다.
 const goList = () => router.push('/')
+
+// 변환 로직은 configStore.convertTemp 하나를 공유한다 (메인/상세 중복 제거)
+const displayTemp = computed(() => (city.value ? configStore.convertTemp(city.value.temp) : 0))
+const displayFeels = computed(() =>
+  city.value ? configStore.convertTemp(city.value.feelsLike) : 0,
+)
 </script>
 
 <template>
@@ -66,22 +79,44 @@ const goList = () => router.push('/')
       <header class="detail-head" :class="city.temp >= 25 ? 'is-hot' : 'is-cool'">
         <div>
           <p class="station">관측소 {{ city.observation.station }}</p>
-          <h2>{{ city.name }}</h2>
+          <h2>
+            {{ city.name }}
+            <button
+              type="button"
+              class="fav"
+              :class="{ on: favoriteStore.isFavorite(city.id) }"
+              @click="favoriteStore.toggleFavorite(city.id)"
+            >
+              {{ favoriteStore.isFavorite(city.id) ? '★' : '☆' }}
+            </button>
+          </h2>
           <p class="status">{{ city.status }}</p>
         </div>
         <div class="temp-big">
-          {{ city.temp }}<span>℃</span>
-          <small>체감 {{ city.feelsLike }}℃</small>
+          {{ displayTemp }}<span>{{ configStore.unitSymbol }}</span>
+          <small>체감 {{ displayFeels }}{{ configStore.unitSymbol }}</small>
         </div>
       </header>
 
       <section class="obs-grid">
-        <div class="obs"><span>습도</span><strong>{{ city.humidity }}%</strong></div>
-        <div class="obs"><span>풍속</span><strong>{{ city.wind }}m/s</strong></div>
-        <div class="obs"><span>기압</span><strong>{{ city.observation.pressure }}hPa</strong></div>
-        <div class="obs"><span>가시거리</span><strong>{{ city.observation.visibility }}km</strong></div>
-        <div class="obs"><span>자외선</span><strong>{{ city.observation.uv }}</strong></div>
-        <div class="obs"><span>미세먼지</span><strong>{{ city.observation.dust }}</strong></div>
+        <div class="obs">
+          <span>습도</span><strong>{{ city.humidity }}%</strong>
+        </div>
+        <div class="obs">
+          <span>풍속</span><strong>{{ city.wind }}m/s</strong>
+        </div>
+        <div class="obs">
+          <span>기압</span><strong>{{ city.observation.pressure }}hPa</strong>
+        </div>
+        <div class="obs">
+          <span>가시거리</span><strong>{{ city.observation.visibility }}km</strong>
+        </div>
+        <div class="obs">
+          <span>자외선</span><strong>{{ city.observation.uv }}</strong>
+        </div>
+        <div class="obs">
+          <span>미세먼지</span><strong>{{ city.observation.dust }}</strong>
+        </div>
       </section>
 
       <p class="route-note">
@@ -108,6 +143,21 @@ const goList = () => router.push('/')
 </template>
 
 <style scoped>
+.fav {
+  padding: 0 6px;
+  font-size: 0.8em;
+  line-height: 1;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  opacity: 0.35;
+  cursor: pointer;
+}
+.fav.on {
+  color: #f59e0b;
+  opacity: 1;
+}
+
 .detail {
   max-width: 820px;
   margin: 0 auto;

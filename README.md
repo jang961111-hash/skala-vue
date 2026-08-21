@@ -48,6 +48,10 @@ src/
 ├── main.js                          # createApp → Pinia/Router 등록 → mount('#app')
 ├── App.vue                          # Root Component (nav + RouterView)
 ├── router/index.js                  # 라우트 정의
+├── stores/
+│   ├── configStore.js               # 212p 단위 설정 (unit / unitSymbol / toggleUnit)
+│   ├── favoriteStore.js             # 212p 요구사항4 본인 추가 — 즐겨찾기
+│   └── counter.js                   # 211p Code Challenge 용 (create-vue 기본)
 ├── assets/
 │   ├── base.css                     # 리셋/변수
 │   └── main.css                     # 전역 스타일 (스캐폴드 2단 grid 제거)
@@ -291,6 +295,48 @@ router.push(`/weather/${city.id}`)
 #### 없는 도시 ID는 Catch-all이 못 잡는다
 
 `/weather/city_99`는 **경로 패턴은 맞고 데이터만 없는** 경우라 Catch-all이 작동하지 않습니다. `WeatherDetailView`가 직접 `notFound` 상태로 처리합니다.
+
+#### Pinia Store (198p ~ 212p)
+
+**교재 212p Hands on: Weather Store** — 196p에서 만든 문제(라우터로 갈린 화면끼리 데이터 공유)의 답입니다.
+
+| #   | 요구사항               | 구현                                                       |
+| --- | ---------------------- | ---------------------------------------------------------- |
+| —   | `configStore.js`       | state `unit` / getters `unitSymbol` / actions `toggleUnit` |
+| 1   | `UnitToggler.vue`      | ℃/℉ 세그먼트 버튼 + 토글 버튼                              |
+| 2   | Navigation Bar 옆 배치 | `App.vue`의 `<nav>` 우측                                   |
+| 3   | 메인·상세에 단위 적용  | `WeatherCard` / `WeatherDetailView` 양쪽                   |
+| 4   | 본인 추가              | `favoriteStore.js` + configStore에 getter·action 추가      |
+
+**왜 스토어여야 하는가**
+
+단위 설정은 **네비게이션 바**에서 바꾸는데, 그 값을 써야 하는 곳은 **대시보드 카드**와 **상세 페이지**입니다. 셋은 부모-자식이 아니라 라우터로 갈린 남남입니다.
+
+| 방법           | 가능?                                          |
+| -------------- | ---------------------------------------------- |
+| props          | ❌ 부모-자식이 아니므로                        |
+| provide/inject | △ App.vue에서 내려줄 수는 있으나 추적이 어려움 |
+| **스토어**     | ⭕ 어디서든 import                             |
+
+**교재 212p 참고사항에 대한 대응**
+
+> 메인/상세에 단위 변경을 적용할 경우 유사한 코드가 중복됨 → Composable로 해결 가능 (범위 제외)
+
+변환 로직이 상태에만 의존하므로 **스토어의 action(`convertTemp`)으로 올려** Composable 없이 중복을 제거했습니다. `WeatherCard`와 `WeatherDetailView`가 이 함수 하나를 공유합니다.
+
+**Frequent Mistakes (205p)**
+
+```js
+const { count } = counterStore // ❌ 반응성 단절
+const { count } = storeToRefs(counterStore) // 🟢 보존
+const { increment } = counterStore // 🟢 함수는 무방
+```
+
+구조분해는 값을 꺼내 **복사**하므로 Proxy 연결이 끊깁니다. 연습장의 `StoreCounter.vue`에서 두 값을 나란히 두고 확인할 수 있습니다.
+
+**favoriteStore를 추가한 이유 (요구사항 4)**
+
+컴포넌트의 `ref`에 즐겨찾기를 담으면 상세 페이지로 이동하는 순간 **언마운트되면서 사라집니다.** 스토어는 컴포넌트 바깥에 살기 때문에 유지됩니다. 실제로 목록에서 별을 누르고 상세로 이동해도 그대로입니다.
 
 #### Navigation Guard (193~194p)
 

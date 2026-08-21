@@ -21,6 +21,7 @@
 -->
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
+import UnitToggler from './components/handson/weather/UnitToggler.vue'
 </script>
 
 <template>
@@ -31,6 +32,9 @@ import { RouterLink, RouterView } from 'vue-router'
       <RouterLink to="/stats">통계</RouterLink>
       <RouterLink to="/about">소개</RouterLink>
     </nav>
+
+    <!-- 교재 212p 요구사항 2: Navigation Bar 옆에 UnitToggler 배치 -->
+    <UnitToggler />
   </header>
 
   <!-- 주소창 변경에 따라 실제 화면이 갈아 끼워지는 가변형 주입 구역 -->

@@ -29,6 +29,7 @@
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { weatherMockData } from '../data/weatherMockData.js'
+import { useFavoriteStore } from '../stores/favoriteStore.js'
 import BaseDashboardCard from '../components/handson/weather/BaseDashboardCard.vue'
 import SearchBar from '../components/handson/weather/SearchBar.vue'
 import WeatherCard from '../components/handson/weather/WeatherCard.vue'
@@ -36,6 +37,10 @@ import StatSummary from '../components/handson/weather/StatSummary.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// [요구사항 4] 즐겨찾기 스토어 — 목록/상세/페이지 이동을 넘어 상태가 유지된다
+const favoriteStore = useFavoriteStore()
+const onlyFavorite = ref(false)
 
 /* ── 반응형 상태 (178p 와 동일) ── */
 const weatherList = ref(weatherMockData)
@@ -46,11 +51,12 @@ const onlyRainy = ref(false)
 /* ── computed 3종 (145p 유지) ── */
 const filteredWeatherList = computed(() => {
   const query = searchQuery.value.trim()
-  if (!query && !onlyRainy.value) return weatherList.value
+  if (!query && !onlyRainy.value && !onlyFavorite.value) return weatherList.value
   return weatherList.value.filter((city) => {
     const matchKeyword = !query || city.name.includes(query)
     const matchRainy = !onlyRainy.value || city.status === '비'
-    return matchKeyword && matchRainy
+    const matchFav = !onlyFavorite.value || favoriteStore.isFavorite(city.id)
+    return matchKeyword && matchRainy && matchFav
   })
 })
 
@@ -71,7 +77,9 @@ watch(selectedCityInfo, (newVal, oldVal) => {
 })
 
 watchEffect(() => {
-  console.log(`[watchEffect] 검색어: "${searchQuery.value}" → ${filteredWeatherList.value.length}건`)
+  console.log(
+    `[watchEffect] 검색어: "${searchQuery.value}" → ${filteredWeatherList.value.length}건`,
+  )
 })
 
 watch(
@@ -133,10 +141,24 @@ const handleClickDetail = (cityName) => {
         📍 <strong>{{ selectedCityInfo }}</strong
         >이 선택되었습니다.
       </template>
-      <template v-else>카드를 클릭하면 선택되고, [상세보기]를 누르면 상세 페이지로 이동합니다.</template>
+      <template v-else
+        >카드를 클릭하면 선택되고, [상세보기]를 누르면 상세 페이지로 이동합니다.</template
+      >
     </p>
 
     <StatSummary :count="filteredWeatherList.length" :average-temp="averageTemp" />
+
+    <!-- [요구사항 4] 즐겨찾기 필터 — 스토어 상태를 화면에서 활용 -->
+    <div class="fav-bar">
+      <span>⭐ 즐겨찾기 {{ favoriteStore.favoriteCount }}곳</span>
+      <label>
+        <input type="checkbox" v-model="onlyFavorite" />
+        즐겨찾기만 보기
+      </label>
+      <button v-if="favoriteStore.hasFavorite" type="button" @click="favoriteStore.clearAll">
+        전체 해제
+      </button>
+    </div>
 
     <BaseDashboardCard>
       <template v-slot:header><h3>📋 지역별 날씨 현황</h3></template>
@@ -168,6 +190,32 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+.fav-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 9px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  font-size: 0.86rem;
+}
+.fav-bar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.fav-bar button {
+  padding: 3px 11px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
 .weather-home {
   max-width: 900px;
   margin: 0 auto;
