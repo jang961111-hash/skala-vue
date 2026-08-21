@@ -40,3 +40,6 @@ __screenshots__/
 
 # Claude Code / OMC internal state (not project source)
 .omc/
+
+# README 작성용 개인 메모 (제출물 아님)
+README-재료.md
