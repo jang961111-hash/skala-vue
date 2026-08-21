@@ -35,6 +35,19 @@ jobs:
         env:
           # 저장소명이 바뀌면 이 값도 함께 바꿔야 한다.
           VITE_BASE: /skala-vue/
+          # OpenWeather API 키 (교재 265p 환경 변수)
+          #
+          # 저장소 Settings > Secrets and variables > Actions 에 등록한 값을
+          # 빌드 시점에만 주입한다. 소스에도, 이 워크플로 파일에도 값은 없다.
+          #
+          # ⚠️ 알고 쓰는 한계
+          #   import.meta.env.VITE_* 는 런타임 조회가 아니라 빌드 타임
+          #   문자열 치환이다. 따라서 이 키는 배포된 JS 번들 안에 그대로
+          #   남는다. Git 소스에서는 감춰지지만 브라우저에서는 보인다.
+          #   프론트엔드 전용 앱의 구조적 한계이며, 근본 해결책은 키를
+          #   백엔드 프록시 뒤에 두고 프론트는 자체 서버만 호출하는 것이다.
+          #   (무료 등급 키라 노출 시 영향이 제한적이라 판단해 이대로 둠)
+          VITE_OPENWEATHER_API_KEY: ${{ secrets.VITE_OPENWEATHER_API_KEY }}
         run: npm run build
 
       - name: SPA fallback
