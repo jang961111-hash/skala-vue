@@ -48,6 +48,21 @@ export const useWeatherStore = defineStore('weather', () => {
 
   const findCity = (cityId) => cities.value.find((c) => c.id === cityId)
 
+  /**
+   * [교재 249p] 특정 도시의 예보에서 **선택 가능한 날짜 목록**을 뽑는다.
+   * el-date-picker 의 disabledDate 에 넘겨, 예보가 없는 날은 못 고르게 막는다.
+   */
+  const availableDates = (cityId) => {
+    const list = forecastMap.value[cityId] ?? []
+    return [...new Set(list.map((f) => f.date))]
+  }
+
+  /** 특정 도시·특정 날짜의 3시간 단위 예보만 골라낸다 */
+  const forecastByDate = (cityId, date) => {
+    const list = forecastMap.value[cityId] ?? []
+    return date ? list.filter((f) => f.date === date) : list.slice(0, 8)
+  }
+
   /* ── actions ── */
 
   /**
@@ -105,11 +120,16 @@ export const useWeatherStore = defineStore('weather', () => {
 
     try {
       const data = await fetchForecast(city.english)
-      forecastMap.value[cityId] = data.list.slice(0, 8).map((it) => ({
-        time: it.dt_txt.slice(5, 16).replace(' ', ' '),
+      // 40건(5일 × 3시간) 전부 보관한다.
+      // 화면은 앞 8건만 보여주지만, 날짜 선택 기능이 나머지를 쓴다.
+      forecastMap.value[cityId] = data.list.map((it) => ({
+        date: it.dt_txt.slice(0, 10), // 'YYYY-MM-DD'
+        time: it.dt_txt.slice(5, 16),
+        hour: it.dt_txt.slice(11, 16),
         temp: Math.round(it.main.temp),
         status: it.weather?.[0]?.description ?? '',
         pop: Math.round((it.pop ?? 0) * 100),
+        humidity: it.main.humidity,
       }))
       console.log(`[weatherStore] ${city.name} 예보 ${forecastMap.value[cityId].length}건 수신`)
     } catch (error) {
@@ -127,6 +147,8 @@ export const useWeatherStore = defineStore('weather', () => {
     apiKeyReady,
     statusLabel,
     findCity,
+    availableDates,
+    forecastByDate,
     loadAllWeather,
     loadForecast,
   }

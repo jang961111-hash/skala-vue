@@ -60,8 +60,45 @@ onMounted(() => {
   if (found) weatherStore.loadForecast(cityId)
 })
 
-// 이 도시의 예보 목록 (API 키가 없으면 빈 배열)
-const forecast = computed(() => (city.value ? (weatherStore.forecastMap[city.value.id] ?? []) : []))
+/* ================================================================
+   [교재 249p] UI Library 적용 — el-date-picker 로 예보 날짜 선택
+   ================================================================
+   ▸ 교수님 강조
+     "웹 라이브러리를 예쁘다고 쓰는 게 아니에요. 그 안에 쓰이는 기능들이 있어요.
+      현재 날짜가 아니라 앞으로 특정한 날에 날씨를 보고 싶다,
+      그러면 그 날짜 선택하는 컨트롤을 쓰면 되는 거지."
+
+   ▸ 왜 이 컨트롤이 필요했나
+     /forecast 는 5일치를 3시간 간격으로 40건 준다.
+     그동안은 앞 8건(약 하루치)만 보여줬으므로 나머지 4일치가 낭비되고 있었다.
+     날짜를 고를 수 있어야 40건을 전부 쓸 수 있다.
+
+     달력 UI 를 직접 만들려면 월 이동·요일 배치·선택 상태·비활성 날짜 처리를
+     전부 짜야 한다. 라이브러리는 그걸 props 몇 개로 끝낸다.
+
+   ▸ disabledDate
+     예보가 없는 날(오늘 이전, 5일 이후)은 아예 못 고르게 막는다.
+     "고를 수는 있는데 결과가 없다" 보다 "애초에 못 고른다" 가 낫다.
+   ================================================================ */
+const selectedDate = ref('')
+
+// 예보가 존재하는 날짜만 선택 가능하게 한다
+const disabledDate = (date) => {
+  if (!city.value) return true
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return !weatherStore.availableDates(city.value.id).includes(`${y}-${m}-${d}`)
+}
+
+// 선택한 날짜의 예보만 보여준다 (선택 전에는 앞 8건)
+const forecast = computed(() =>
+  city.value ? weatherStore.forecastByDate(city.value.id, selectedDate.value) : [],
+)
+
+const dateLabel = computed(() =>
+  selectedDate.value ? `${selectedDate.value} 예보` : '3시간 단위 예보 (기본 8건)',
+)
 
 // 교재 191p — router.back() 은 브라우저 뒤로가기와 같다.
 // 단, 주소창에 직접 URL 을 치고 들어온 경우 돌아갈 기록이 없을 수 있어
@@ -128,8 +165,20 @@ const displayFeels = computed(() =>
       </section>
 
       <!-- [요구사항 2] 3시간 단위 예보 (OpenWeatherMap /forecast API) -->
-      <section v-if="forecast.length" class="forecast">
-        <h3>⏱️ 3시간 단위 예보</h3>
+      <section v-if="weatherStore.availableDates(city.id).length" class="forecast">
+        <div class="fc-head">
+          <h3>⏱️ {{ dateLabel }}</h3>
+          <!-- 교재 249p — Element Plus 날짜 선택 컨트롤 -->
+          <el-date-picker
+            v-model="selectedDate"
+            type="date"
+            value-format="YYYY-MM-DD"
+            placeholder="날짜 선택"
+            :disabled-date="disabledDate"
+            size="small"
+            clearable
+          />
+        </div>
         <div class="fc-scroll">
           <div v-for="(f, i) in forecast" :key="i" class="fc">
             <span class="fc-time">{{ f.time }}</span>
@@ -169,10 +218,17 @@ const displayFeels = computed(() =>
 </template>
 
 <style scoped>
+.fc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
 .forecast h3 {
   font-size: 0.98rem;
   font-weight: 650;
-  margin-bottom: 10px;
 }
 .fc-scroll {
   display: flex;
