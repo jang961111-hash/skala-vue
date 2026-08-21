@@ -9,6 +9,36 @@
   ================================================================
 -->
 <script setup>
+/* ================================================================
+   [교재 265~267p / 272p] 환경 변수 (Environment Variables)
+   ================================================================
+   ▸ 왜 필요한가
+     하드코딩된 설정값을 소스 밖으로 빼내는 것.
+     목적이 두 가지다.
+       1) 보안 — API 키를 Git 에 올리지 않는다
+       2) 환경별 유연성 — 소스 수정 없이 빌드 명령만 바꿔
+          개발/검증(staging)/상용(production) 서버를 전환한다
+
+   ▸ VITE_ 접두사가 필수다 (교재 266p)
+     Vite 는 VITE_ 로 시작하는 변수만 클라이언트 코드에 노출한다.
+     접두사를 빼면 undefined 가 된다. 서버 전용 비밀값이 실수로
+     번들에 섞이는 것을 막기 위한 안전장치다.
+
+   ▸ 모드별 파일 (교재 267p)
+       npm run build:staging     → .env.staging    을 읽음
+       npm run build:production  → .env.production 을 읽음
+     키 이름은 같고 값만 다르다.
+
+   ▸ MODE / BASE_URL 은 Vite 가 항상 넣어주는 내장 변수다.
+   ================================================================ */
+const buildMode = import.meta.env.MODE
+const appMode = import.meta.env.VITE_APP_MODE ?? '(이 모드에는 지정 안 됨)'
+const apiUrl = import.meta.env.VITE_API_URL ?? '(이 모드에는 지정 안 됨)'
+const baseUrl = import.meta.env.BASE_URL
+
+// [272p 미션] 주입된 값을 콘솔로 관측한다
+console.log('[env] MODE:', buildMode, '| VITE_API_URL:', apiUrl)
+
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -17,7 +47,11 @@ const goHome = () => router.push('/')
 
 const routeTable = ref([
   { path: '/', desc: '날씨 대시보드 (목록·검색·필터)', page: '196p 요구사항 3' },
-  { path: '/weather/:cityId', desc: '도시별 상세 관측 정보 — 동적 세그먼트', page: '187p / 요구사항 4' },
+  {
+    path: '/weather/:cityId',
+    desc: '도시별 상세 관측 정보 — 동적 세그먼트',
+    page: '187p / 요구사항 4',
+  },
   { path: '/stats', desc: '관측 통계 — 쿼리스트링 정렬 (본인 추가)', page: '189p / 요구사항 6' },
   { path: '/about', desc: '이 페이지', page: '요구사항 5' },
   { path: '/history/*', desc: '116p·145p·178p 단계별 학습 이력 보존', page: '—' },
@@ -26,9 +60,21 @@ const routeTable = ref([
 
 const learned = ref([
   { unit: 'Vue Syntax', page: '60~116p', item: 'v-directive 전반, 이벤트 수식어, v-model' },
-  { unit: 'Composition API', page: '117~145p', item: 'ref / reactive / computed / watch / watchEffect' },
-  { unit: 'Vue Components', page: '146~178p', item: '라이프사이클, props·emits, provide·inject, slot' },
-  { unit: 'Vue Router', page: '179~197p', item: '동적 라우트, 쿼리스트링, 지연 로딩, 가드, Catch-all' },
+  {
+    unit: 'Composition API',
+    page: '117~145p',
+    item: 'ref / reactive / computed / watch / watchEffect',
+  },
+  {
+    unit: 'Vue Components',
+    page: '146~178p',
+    item: '라이프사이클, props·emits, provide·inject, slot',
+  },
+  {
+    unit: 'Vue Router',
+    page: '179~197p',
+    item: '동적 라우트, 쿼리스트링, 지연 로딩, 가드, Catch-all',
+  },
 ])
 </script>
 
@@ -59,7 +105,8 @@ const learned = ref([
       <ul class="learn-list">
         <li v-for="l in learned" :key="l.unit">
           <div class="lu">
-            <strong>{{ l.unit }}</strong><span class="page">{{ l.page }}</span>
+            <strong>{{ l.unit }}</strong
+            ><span class="page">{{ l.page }}</span>
           </div>
           <p>{{ l.item }}</p>
         </li>
@@ -76,10 +123,66 @@ const learned = ref([
       </ol>
       <p class="note">각 단계는 <code>/history/*</code> 경로에 그대로 남겨 두었습니다.</p>
     </section>
+
+    <!-- [교재 266p] 주입된 환경 변수를 화면에서 확인 -->
+    <section>
+      <h2>빌드 환경 (환경 변수)</h2>
+      <dl class="envbox">
+        <div>
+          <dt>빌드 모드</dt>
+          <dd>
+            <code>{{ buildMode }}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>VITE_APP_MODE</dt>
+          <dd>
+            <code>{{ appMode }}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>VITE_API_URL</dt>
+          <dd>
+            <code>{{ apiUrl }}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>BASE_URL</dt>
+          <dd>
+            <code>{{ baseUrl }}</code>
+          </dd>
+        </div>
+      </dl>
+      <p class="note">
+        <code>npm run build:staging</code> / <code>build:production</code> 으로 빌드하면 위 값이
+        <code>.env.staging</code> / <code>.env.production</code> 의 값으로 바뀝니다. 소스는 한
+        글자도 건드리지 않습니다. OpenWeather API 키도 같은 방식으로 <code>.env.local</code> 에 두어
+        Git 에는 올라가지 않습니다.
+      </p>
+    </section>
   </main>
 </template>
 
 <style scoped>
+.envbox {
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+.envbox > div {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.envbox dt {
+  min-width: 130px;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.envbox dd {
+  margin: 0;
+}
 .about {
   max-width: 820px;
   margin: 0 auto;

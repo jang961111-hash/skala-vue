@@ -16,6 +16,18 @@ export default defineConfig({
   // 이 값 하나만 바꾸면 라우팅 경로까지 함께 따라온다.
   base: process.env.VITE_BASE || '/',
   plugins: [vue(), vueDevTools()],
+
+  // [교재 264p] 로컬 개발 서버(Dev Server) 속성 제어
+  server: {
+    port: 3000, // 개발 서버 포트를 3000 번으로 고정 (기본값 5173 → 3000)
+    open: true, // npm run dev 시 기본 브라우저 자동 실행
+  },
+
+  // [교재 264p] 컴파일 완료된 산출물(Production Build) 사양 제어
+  build: {
+    outDir: 'dist', // 최종 정적 리소스가 저장될 출력 디렉토리
+  },
+
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
