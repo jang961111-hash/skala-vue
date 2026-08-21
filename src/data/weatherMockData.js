@@ -19,6 +19,7 @@ export const weatherMockData = [
   {
     id: 'city_01',
     name: '서울',
+    english: 'Seoul',
     temp: 28,
     status: '맑음',
     humidity: 62,
@@ -29,6 +30,7 @@ export const weatherMockData = [
   {
     id: 'city_02',
     name: '수원',
+    english: 'Suwon',
     temp: 24,
     status: '비',
     humidity: 88,
@@ -39,6 +41,7 @@ export const weatherMockData = [
   {
     id: 'city_03',
     name: '부산',
+    english: 'Busan',
     temp: 26,
     status: '구름',
     humidity: 74,
@@ -49,6 +52,7 @@ export const weatherMockData = [
   {
     id: 'city_04',
     name: '강릉',
+    english: 'Gangneung',
     temp: 22,
     status: '비',
     humidity: 91,
@@ -59,6 +63,7 @@ export const weatherMockData = [
   {
     id: 'city_05',
     name: '제주',
+    english: 'Jeju',
     temp: 29,
     status: '맑음',
     humidity: 70,
@@ -69,6 +74,7 @@ export const weatherMockData = [
   {
     id: 'city_06',
     name: '대전',
+    english: 'Daejeon',
     temp: 25,
     status: '구름',
     humidity: 66,
@@ -77,6 +83,13 @@ export const weatherMockData = [
     observation: { station: 'TJN', pressure: 1007, visibility: 10, uv: 4, dust: '나쁨' },
   },
 ]
+
+/**
+ * ▸ english 필드를 추가한 이유 (교재 220p)
+ *   OpenWeatherMap 의 Geocoding 은 도시명을 영문으로 받는다.
+ *     /weather?q=Seoul
+ *   한글 '서울' 로는 조회되지 않으므로 매핑용 영문명을 함께 갖는다.
+ */
 
 /** 도시 ID 로 하나를 찾는다. 없으면 undefined — 상세 화면에서 "없는 도시" 처리에 쓴다. */
 export const findCityById = (cityId) => weatherMockData.find((c) => c.id === cityId)

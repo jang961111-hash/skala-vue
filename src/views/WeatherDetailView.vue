@@ -27,7 +27,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { findCityById } from '../data/weatherMockData.js'
+import { useWeatherStore } from '../stores/weatherStore.js'
 import { useConfigStore } from '../stores/configStore.js'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 
@@ -35,6 +35,7 @@ import { useFavoriteStore } from '../stores/favoriteStore.js'
 // 목록 화면과 이 화면은 라우터로 갈린 남남이지만 같은 스토어를 본다.
 const configStore = useConfigStore()
 const favoriteStore = useFavoriteStore()
+const weatherStore = useWeatherStore()
 
 const route = useRoute()
 const router = useRouter()
@@ -46,14 +47,21 @@ onMounted(() => {
   const cityId = route.params.cityId
   console.log(`[useRoute] 현재 경로: ${route.path} / 동적 파라미터 cityId: ${cityId}`)
 
-  const found = findCityById(cityId)
+  const found = weatherStore.findCity(cityId)
   if (found) {
     city.value = found
   } else {
     notFound.value = true
     console.warn(`[WeatherDetail] "${cityId}" 에 해당하는 도시를 찾지 못했습니다.`)
   }
+
+  // [요구사항 2] OpenWeatherMap 의 다른 API 추가 — 3시간 단위 예보
+  // 교수님 언급: "어느 지역을 클릭한 다음 그 지역의 3시간 단위 날씨를 가져온다든가"
+  if (found) weatherStore.loadForecast(cityId)
 })
+
+// 이 도시의 예보 목록 (API 키가 없으면 빈 배열)
+const forecast = computed(() => (city.value ? (weatherStore.forecastMap[city.value.id] ?? []) : []))
 
 // 교재 191p — router.back() 은 브라우저 뒤로가기와 같다.
 // 단, 주소창에 직접 URL 을 치고 들어온 경우 돌아갈 기록이 없을 수 있어
@@ -119,6 +127,24 @@ const displayFeels = computed(() =>
         </div>
       </section>
 
+      <!-- [요구사항 2] 3시간 단위 예보 (OpenWeatherMap /forecast API) -->
+      <section v-if="forecast.length" class="forecast">
+        <h3>⏱️ 3시간 단위 예보</h3>
+        <div class="fc-scroll">
+          <div v-for="(f, i) in forecast" :key="i" class="fc">
+            <span class="fc-time">{{ f.time }}</span>
+            <strong class="fc-temp"
+              >{{ configStore.convertTemp(f.temp) }}{{ configStore.unitSymbol }}</strong
+            >
+            <span class="fc-status">{{ f.status }}</span>
+            <span class="fc-pop">💧{{ f.pop }}%</span>
+          </div>
+        </div>
+      </section>
+      <p v-else-if="!weatherStore.apiKeyReady" class="no-forecast">
+        ⏱️ 3시간 단위 예보는 API 키를 설정하면 표시됩니다.
+      </p>
+
       <p class="route-note">
         이 페이지의 주소는 <code>/weather/{{ city.id }}</code> 입니다. 라우터에는
         <code>/weather/:cityId</code> 한 줄만 정의돼 있고, 도시가 몇 개든 이 하나가 전부 받습니다.
@@ -143,6 +169,49 @@ const displayFeels = computed(() =>
 </template>
 
 <style scoped>
+.forecast h3 {
+  font-size: 0.98rem;
+  font-weight: 650;
+  margin-bottom: 10px;
+}
+.fc-scroll {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+}
+.fc {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 92px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+}
+.fc-time {
+  font-size: 0.68rem;
+  opacity: 0.65;
+}
+.fc-temp {
+  font-size: 1.1rem;
+}
+.fc-status {
+  font-size: 0.72rem;
+  opacity: 0.8;
+  text-align: center;
+}
+.fc-pop {
+  font-size: 0.7rem;
+  color: #0ea5e9;
+}
+.no-forecast {
+  font-size: 0.82rem;
+  opacity: 0.6;
+}
+
 .fav {
   padding: 0 6px;
   font-size: 0.8em;

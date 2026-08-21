@@ -28,8 +28,8 @@
 <script setup>
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { weatherMockData } from '../data/weatherMockData.js'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
+import { useWeatherStore } from '../stores/weatherStore.js'
 import BaseDashboardCard from '../components/handson/weather/BaseDashboardCard.vue'
 import SearchBar from '../components/handson/weather/SearchBar.vue'
 import WeatherCard from '../components/handson/weather/WeatherCard.vue'
@@ -40,10 +40,15 @@ const router = useRouter()
 
 // [요구사항 4] 즐겨찾기 스토어 — 목록/상세/페이지 이동을 넘어 상태가 유지된다
 const favoriteStore = useFavoriteStore()
+
+// 교재 230p 요구사항 1 — 날씨 데이터를 스토어에서 가져온다.
+// API 키가 있으면 실시간, 없으면 Mock 으로 자동 폴백된다.
+const weatherStore = useWeatherStore()
 const onlyFavorite = ref(false)
 
 /* ── 반응형 상태 (178p 와 동일) ── */
-const weatherList = ref(weatherMockData)
+// 스토어의 cities 를 그대로 참조한다 (별도 ref 를 두면 동기화 문제가 생긴다)
+const weatherList = computed(() => weatherStore.cities)
 const searchQuery = ref('')
 const selectedCityInfo = ref('')
 const onlyRainy = ref(false)
@@ -91,6 +96,9 @@ watch(
 
 /* ── 교재 189p: 마운트 시 주소창의 ?search= 값으로 상태 복원 ── */
 onMounted(() => {
+  // 교재 153p — Mounting 이 API 호출 최적 타이밍
+  weatherStore.loadAllWeather()
+
   if (route.query.search) {
     searchQuery.value = route.query.search
     console.log(`[useRoute] 쿼리스트링에서 검색어 복원: "${route.query.search}"`)
@@ -125,6 +133,27 @@ const handleClickDetail = (cityName) => {
       <h2>🌤️ 전국 날씨 대시보드</h2>
       <p class="sub">SKALA Vue.js 과제 — 교재 196p Hands on: Weather Router</p>
     </header>
+
+    <!-- 교재 230p — 데이터 출처/상태 표시 -->
+    <div
+      class="data-status"
+      :class="{ live: weatherStore.isLive, loading: weatherStore.isLoading }"
+    >
+      <span class="dot"></span>
+      <span>{{ weatherStore.statusLabel }}</span>
+      <button
+        v-if="weatherStore.apiKeyReady"
+        type="button"
+        :disabled="weatherStore.isLoading"
+        @click="weatherStore.loadAllWeather"
+      >
+        {{ weatherStore.isLoading ? '불러오는 중…' : '새로고침' }}
+      </button>
+      <span v-else class="guide">
+        <code>.env.local</code> 에 <code>VITE_OPENWEATHER_API_KEY</code> 를 넣으면 실시간 데이터로
+        바뀝니다.
+      </span>
+    </div>
 
     <BaseDashboardCard>
       <template v-slot:header><h3>🔎 도시 검색</h3></template>
@@ -190,6 +219,52 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+.data-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+.data-status .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+  flex-shrink: 0;
+}
+.data-status.live .dot {
+  background: #22c55e;
+}
+.data-status.loading .dot {
+  background: #f59e0b;
+}
+.data-status button {
+  padding: 3px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.data-status button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.data-status .guide {
+  opacity: 0.7;
+  font-size: 0.78rem;
+}
+.data-status code {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(127, 127, 127, 0.15);
+}
+
 .fav-bar {
   display: flex;
   align-items: center;

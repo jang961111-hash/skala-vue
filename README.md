@@ -48,13 +48,18 @@ src/
 ├── main.js                          # createApp → Pinia/Router 등록 → mount('#app')
 ├── App.vue                          # Root Component (nav + RouterView)
 ├── router/index.js                  # 라우트 정의
+├── api/
+│   └── weatherApi.js                # 230p Axios 호출 계층 (인스턴스·변환)
 ├── stores/
 │   ├── configStore.js               # 212p 단위 설정 (unit / unitSymbol / toggleUnit)
 │   ├── favoriteStore.js             # 212p 요구사항4 본인 추가 — 즐겨찾기
+│   ├── weatherStore.js              # 230p 날씨 데이터 + 로딩/에러 상태
 │   └── counter.js                   # 211p Code Challenge 용 (create-vue 기본)
 ├── assets/
 │   ├── base.css                     # 리셋/변수
 │   └── main.css                     # 전역 스타일 (스캐폴드 2단 grid 제거)
+├── api/
+│   └── weatherApi.js                # 230p Axios 호출 계층 (인스턴스·변환)
 ├── stores/counter.js                # create-vue 기본 store — 아직 미사용 (store 단원에서 교체 예정)
 ├── views/
 │   ├── HomeView.vue                 # "/" → WeatherMockup 마운트
@@ -337,6 +342,48 @@ const { increment } = counterStore // 🟢 함수는 무방
 **favoriteStore를 추가한 이유 (요구사항 4)**
 
 컴포넌트의 `ref`에 즐겨찾기를 담으면 상세 페이지로 이동하는 순간 **언마운트되면서 사라집니다.** 스토어는 컴포넌트 바깥에 살기 때문에 유지됩니다. 실제로 목록에서 별을 누르고 상세로 이동해도 그대로입니다.
+
+#### Axios · 외부 API (213p ~ 230p)
+
+**교재 230p Hands on: Weather Axios**
+
+| #   | 요구사항                   | 구현                                                 |
+| --- | -------------------------- | ---------------------------------------------------- |
+| 1   | OpenWeatherMap 실제 데이터 | `weatherStore.loadAllWeather()` — 6개 도시 동시 호출 |
+| 2   | OpenWeatherMap API 추가    | `/forecast` — 상세 페이지의 3시간 단위 예보          |
+| 3   | 기타 외부 API              | 연습장 `AxiosJson.vue` — JSONPlaceholder REST CRUD   |
+
+##### ⚠️ API 키 설정 (실행 전 필수)
+
+이 저장소는 **Public** 이라 API 키를 커밋하지 않습니다. 키 없이도 앱은 Mock 데이터로 정상 동작하며, 키를 넣으면 같은 화면이 실시간 데이터로 바뀝니다.
+
+```bash
+cp .env.example .env.local
+# .env.local 을 열어 VITE_OPENWEATHER_API_KEY=본인키 입력
+npm run dev   # 환경변수는 서버 시작 시 읽히므로 재시작 필요
+```
+
+키 발급: <https://openweathermap.org/> 가입 → My API keys
+발급 직후에는 활성화까지 **최대 2시간** 걸립니다 (그 전에는 401).
+
+`.env.local` 은 `.gitignore` 의 `*.local` 규칙으로 차단됩니다.
+
+##### 왜 `api/` 폴더로 분리했나
+
+컴포넌트마다 axios 를 직접 부르면 BASE_URL 이 흩어지고 에러 처리가 제각각이 됩니다. 호출을 한 파일에 모으면 API 주소가 바뀔 때 그 한 곳만 고치면 됩니다.
+
+`toCityShape()` 로 응답을 앱의 도시 객체 형태로 변환하는 층도 두었습니다. 백엔드 응답 구조와 화면이 쓰는 구조를 분리해, API 가 바뀌어도 화면을 고치지 않아도 됩니다.
+
+##### `Promise.allSettled` 를 쓴 이유
+
+도시 6개를 동시에 호출하는데, `Promise.all` 은 **하나만 실패해도 전부 reject** 됩니다. `allSettled` 는 실패한 도시만 Mock 으로 남기고 나머지는 살립니다.
+
+##### Axios vs fetch (교재 222p)
+
+|           | fetch                    | Axios                        |
+| --------- | ------------------------ | ---------------------------- |
+| JSON 파싱 | `.json()` 한 번 더       | `response.data` 가 이미 객체 |
+| 4xx/5xx   | 에러로 안 봄 (직접 체크) | 자동 reject → `catch`        |
 
 #### Navigation Guard (193~194p)
 
