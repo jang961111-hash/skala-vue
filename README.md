@@ -249,9 +249,52 @@ WeatherParent  ← 상태의 유일한 주인
 
 `StatSummary.vue`는 계산도 상태도 갖지 않고 받은 숫자를 보여주기만 하는 **표시 전용(Presentational) 컴포넌트**입니다. `averageTemp` 계산은 부모의 computed가 담당합니다 — 계산 책임과 표시 책임의 분리.
 
-### Day 4 (08/21) — 예정
+### Day 4 (08/21) — Vue Router (179p ~ 197p)
 
-_수업 진행에 따라 채웁니다._
+**교재 196p Hands on: Weather Router** — 178p 컴포넌트 구조를 라우터로 페이지 분리했습니다.
+
+| #   | 요구사항                  | 구현                                                             | 교재 |
+| --- | ------------------------- | ---------------------------------------------------------------- | ---- |
+| 1   | 지연 로딩 + Catch-all     | 전 라우트 `() => import(...)`, `/:pathMatch(.*)*` 마지막 배치    | 195p |
+| 2   | App.vue 네비 + RouterView | `<RouterLink>` 3개 + `<RouterView />`                            | 182p |
+| 3   | WeatherHomeView           | WeatherParent 대체. **`window.alert` → `router.push`**           | 191p |
+| 4   | WeatherDetailView         | `/weather/:cityId` 동적 세그먼트, `onMounted`에서 Mock Data 조회 | 187p |
+| 5   | WeatherAboutView          | 라우팅 표 + 학습 이력 + 돌아가기                                 | —    |
+| 6   | 본인 추가 View            | `WeatherStatsView` — 쿼리스트링 정렬                             | 189p |
+
+#### 178p 대비 달라진 단 하나
+
+```js
+// 178p
+window.alert(`${cityName}의 현재 날씨는 [${status}] 상태입니다.`)
+
+// 196p — Programmatic Navigation
+router.push(`/weather/${city.id}`)
+```
+
+자식(`WeatherCard`)은 여전히 `click-detail`을 emit할 뿐입니다. **"그걸 받아서 무엇을 하는가"만 부모가 바꿨습니다.** 컴포넌트를 분리해 둔 효과가 여기서 나옵니다.
+
+#### 동적 세그먼트 vs 쿼리스트링 — 왜 나눠 쓰는가
+
+|             | 동적 세그먼트 `/weather/:cityId` | 쿼리스트링 `?sort=temp`       |
+| ----------- | -------------------------------- | ----------------------------- |
+| 의미        | 그 리소스가 **무엇인지**         | 같은 리소스를 **어떻게 볼지** |
+| 라우터 선언 | 필요                             | **불필요** (자유 확장)        |
+| 이 앱에서   | 도시 6개든 600개든 라우트 한 줄  | 정렬 상태를 URL로 공유 가능   |
+
+#### Mock Data를 별도 모듈로 뺀 이유
+
+목록(`WeatherHomeView`)과 상세(`WeatherDetailView`)가 같은 데이터를 봐야 하는데, 라우터로 페이지가 갈리면 **서로 부모-자식이 아니게 되어 props로 넘길 수 없습니다.** 그래서 `src/data/weatherMockData.js`로 분리해 양쪽에서 import합니다.
+
+→ 이 자리를 다음 단원의 **Pinia 스토어**가 대체합니다. "왜 스토어가 필요한가"의 답이 바로 이 파일입니다.
+
+#### 없는 도시 ID는 Catch-all이 못 잡는다
+
+`/weather/city_99`는 **경로 패턴은 맞고 데이터만 없는** 경우라 Catch-all이 작동하지 않습니다. `WeatherDetailView`가 직접 `notFound` 상태로 처리합니다.
+
+#### Navigation Guard (193~194p)
+
+요구사항엔 없지만 단원에서 배운 내용이라 `beforeEach`/`afterEach` 로깅 가드를 걸어 두었습니다. 개발자도구 콘솔에서 라우팅 흐름을 볼 수 있습니다.
 
 ---
 

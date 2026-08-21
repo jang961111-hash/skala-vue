@@ -27,9 +27,8 @@ import { RouterLink, RouterView } from 'vue-router'
   <header class="site-head">
     <span class="brand">SKALA Vue.js</span>
     <nav>
-      <RouterLink to="/">날씨 대시보드</RouterLink>
-      <RouterLink to="/composition">Composition</RouterLink>
-      <RouterLink to="/component">Component</RouterLink>
+      <RouterLink to="/">대시보드</RouterLink>
+      <RouterLink to="/stats">통계</RouterLink>
       <RouterLink to="/about">소개</RouterLink>
     </nav>
   </header>
