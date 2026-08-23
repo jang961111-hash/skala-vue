@@ -259,6 +259,8 @@ export const useWeatherStore = defineStore('weather', () => {
         pop: Math.round((it.pop ?? 0) * 100),
         humidity: it.main.humidity,
         wind: Number((it.wind?.speed ?? 0).toFixed(1)),
+        clouds: it.clouds?.all ?? null, // 구름량 % — 사진 지수에 쓴다
+        dt: it.dt, // UTC 초. 골든아워 시각과 맞출 때 쓴다
         // UTC 기준 시각 키 — 대기질 예보(1시간 간격)와 맞추는 데 쓴다
         utcKey: new Date(it.dt * 1000).toISOString().slice(0, 13),
       }))

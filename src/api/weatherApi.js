@@ -158,6 +158,15 @@ export const toCityShape = (raw, base) => ({
   icon: raw.weather?.[0]?.icon ?? null,
   // 대기오염 API 가 좌표를 요구하므로 여기서 받아 둔다
   coord: raw.coord ?? null,
+
+  /* [사진 지수용] 해가 뜨고 지는 시각과 하늘 상태
+     sunrise/sunset 은 UTC 초, timezone 은 그 도시의 UTC 오프셋(초)이다.
+     둘을 더해야 그 도시의 현지 시각이 된다. 서울만 보면 티가 안 나지만
+     도시를 늘리면 바로 어긋나므로 처음부터 오프셋을 같이 들고 다닌다. */
+  sunrise: raw.sys?.sunrise ?? null,
+  sunset: raw.sys?.sunset ?? null,
+  timezone: raw.timezone ?? 0,
+  clouds: raw.clouds?.all ?? null,
   observation: {
     ...base.observation,
     pressure: raw.main.pressure,

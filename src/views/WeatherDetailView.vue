@@ -30,6 +30,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useWeatherStore } from '../stores/weatherStore.js'
 import { useConfigStore } from '../stores/configStore.js'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
+import PhotoPlanner from '../components/PhotoPlanner.vue'
 
 // 교재 212p 요구사항 3 — 상세 페이지에도 같은 단위 설정이 적용된다.
 // 목록 화면과 이 화면은 라우터로 갈린 남남이지만 같은 스토어를 본다.
@@ -116,6 +117,15 @@ const forecast = computed(() =>
 )
 
 /* [9단원 확장] 환기하기 좋은 시간 상위 3개 */
+/* 사진 지수에는 **날짜 필터를 거치지 않은 40건 전부**가 필요하다.
+   화면의 forecast 는 선택한 날짜만 남기므로 그걸 쓰면 안 된다. */
+const allForecast = computed(() =>
+  city.value ? (weatherStore.forecastMap[city.value.id] ?? []) : [],
+)
+const airTable = computed(() =>
+  city.value ? (weatherStore.airForecastMap[city.value.id] ?? {}) : {},
+)
+
 const bestVent = computed(() => (city.value ? weatherStore.bestVentilation(city.value.id, 4) : []))
 
 const ventGrade = (score) => {
@@ -212,6 +222,9 @@ const displayFeels = computed(() =>
       </section>
 
       <!-- [요구사항 2] 3시간 단위 예보 (OpenWeatherMap /forecast API) -->
+      <!-- 앱 주제 — 사진 찍기 좋은 시간 -->
+      <PhotoPlanner :city="city" :forecast="allForecast" :air-table="airTable" />
+
       <!-- ================================================================
            [9단원 확장] 환기 지수 — 날씨 예보 × 대기질 예보
            두 API 를 시간으로 맞춰야만 나오는 정보다.
