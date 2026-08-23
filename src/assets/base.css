@@ -157,7 +157,9 @@ a {
 }
 
 :focus-visible {
-  outline: 2px solid var(--golden);
+  /* 골든색은 배경 위 대비가 2.06 이라 포커스 표시로는 부족했다(WCAG 3:1 미달).
+     dawn 은 밝은 배경에서 짙고 어두운 배경에서 밝아져 양쪽 다 잘 보인다. */
+  outline: 2px solid var(--dawn);
   outline-offset: 2px;
   border-radius: 3px;
 }
