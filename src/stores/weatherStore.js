@@ -24,7 +24,14 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { weatherMockData } from '../data/weatherMockData.js'
-import { fetchCurrentWeather, fetchForecast, toCityShape, hasApiKey } from '../api/weatherApi.js'
+import {
+  fetchCurrentWeather,
+  fetchForecast,
+  toCityShape,
+  hasApiKey,
+  fetchAirPollution,
+  toAirShape,
+} from '../api/weatherApi.js'
 
 export const useWeatherStore = defineStore('weather', () => {
   /* ── state ── */
@@ -80,9 +87,29 @@ export const useWeatherStore = defineStore('weather', () => {
     errorMessage.value = ''
 
     try {
+      /* ============================================================
+         [9단원 확장] 날씨 → 대기오염 **연쇄 호출**
+
+         /air_pollution 은 좌표를 요구하는데, 그 좌표는 /weather
+         응답 안에 있다. 그래서 순서가 강제된다.
+           1) fetchCurrentWeather  → coord 획득
+           2) fetchAirPollution(coord) → 대기질
+
+         대기오염이 실패해도 날씨는 살린다.
+         .catch(() => null) 로 막아 두면 air 만 null 이 되고
+         화면은 그대로 뜬다. (교재 224p 의 폴백을 한 단계 더 적용)
+         ============================================================ */
       const results = await Promise.allSettled(
         weatherMockData.map((base) =>
-          fetchCurrentWeather(base.english).then((raw) => toCityShape(raw, base)),
+          fetchCurrentWeather(base.english)
+            .then((raw) => toCityShape(raw, base))
+            .then(async (city) => {
+              if (!city.coord) return city
+              const air = await fetchAirPollution(city.coord.lat, city.coord.lon)
+                .then(toAirShape)
+                .catch(() => null)
+              return { ...city, air }
+            }),
         ),
       )
 

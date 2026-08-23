@@ -25,6 +25,15 @@ npm run dev                    # http://localhost:3000
 
 키가 없어도 실행된다. Mock 데이터로 화면이 뜨고 상단에 안내 배너가 나온다.
 
+`npm run dev` 로 띄워 두고 `.vue` 파일을 고치면 새로고침 없이 화면만 바뀐다(HMR).
+페이지 전체를 다시 그리는 게 아니라 바뀐 컴포넌트만 갈아 끼우기 때문에,
+입력창에 쳐 둔 검색어나 열어 둔 상태가 그대로 남는다. 이게 없었으면 매번 처음부터 다시 눌러야 했다.
+
+**Vue Devtools** 는 브라우저에서 반응형 데이터를 직접 들여다볼 때 썼다.
+단위 토글을 눌렀을 때 Pinia 탭의 `configStore.unit` 이 실제로 바뀌는지,
+카드가 안 바뀌는 게 스토어 문제인지 화면 문제인지 여기서 갈랐다.
+`import.meta.env` 값이 빌드 모드마다 뭘로 들어왔는지도 여기서 확인했다.
+
 ```bash
 npm run lint              # ESLint + Oxlint
 npm run format            # Prettier
@@ -44,6 +53,23 @@ npm run build:production  # .env.production 을 읽어 빌드
 | `/about`           | 소개      | 구현 현황, 빌드 환경 변수 표시            |
 | `/history/*`       | 학습 이력 | 116p·145p·178p 버전을 지우지 않고 남겨 둠 |
 | `/:pathMatch(.*)*` | 404       | 반드시 맨 마지막에 등록                   |
+
+## 실습 단원별 위치
+
+과제 기준표의 10개 실습 단원이 저장소 어디에 있는지 정리했다.
+
+| 단원 | 실습명                      | 결과물                                      | 문서                                                     |
+| ---- | --------------------------- | ------------------------------------------- | -------------------------------------------------------- |
+| 1    | Vue.js 시작하기             | 프로젝트 전체, `vite.config.js`             | [실행 방법](#실행-방법)                                  |
+| 2    | Vue 문법                    | `components/handson/WeatherMockup.vue`      | [116p](#116p--weather-mockup-v-directive)                |
+| 3    | Composition API             | `components/handson/WeatherComposition.vue` | [145p](#145p--weather-composition)                       |
+| 4    | Vue Component               | `components/handson/weather/` (5개)         | [178p](#178p--weather-component)                         |
+| 5    | Vue Router                  | `router/index.js`, `views/`                 | [196p](#196p--weather-router)                            |
+| 6    | Pinia                       | `stores/` (3개)                             | [212p](#212p--weather-store-pinia)                       |
+| 7    | Axios                       | `api/weatherApi.js`                         | [230p](#230p--axios--외부-api)                           |
+| 8    | UI 라이브러리               | `views/WeatherDetailView.vue`               | [UI 라이브러리](#ui-라이브러리를-어디에-어떻게-적용했나) |
+| 9    | 외부 라이브러리로 과제 확장 | `api/weatherApi.js` 의 대기오염 연동        | [9단원 확장](#9단원--외부-api-를-더-붙여서-과제-확장)    |
+| 10   | Vite 빌드 및 배포           | `.github/workflows/deploy.yml`              | [배포](#배포)                                            |
 
 라우트는 전부 `() => import()` 지연 로딩이다. 빌드하면 화면별로 청크가 쪼개지는 것을 `dist/assets/` 에서 확인할 수 있다.
 
@@ -203,6 +229,59 @@ const disabledDate = (date) => !weatherStore.availableDates(city.value.id).inclu
 
 ---
 
+# 9단원 — 외부 API 를 더 붙여서 과제 확장
+
+교수님이 수업에서 이렇게 말씀하셨다.
+
+> "단순히 날씨 말고 다른 것들도 써봐서 더 데이터 가져올 수 있어야 합니다."
+> "라이브러리 추가되면 데이터가 추가되는 거지. 데이터가 추가되면 거기에 또 구현할 게 쭉 늘어날 거야."
+
+## 고친 지점 — 날씨는 진짜인데 미세먼지만 가짜였다
+
+상세 페이지에 미세먼지가 떠 있었는데, 값이 Mock 에 하드코딩돼 있었다.
+
+```js
+observation: { station: 'SEL', pressure: 1008, visibility: 12, uv: 7, dust: '보통' }
+```
+
+기온·습도·풍속은 API 실데이터인데 대기질만 고정값이라 앞뒤가 안 맞았다.
+**OpenWeather Air Pollution API** 로 바꿨다. 같은 키를 그대로 쓰므로 추가 발급이 필요 없었다.
+
+|             | 전                | 후                                     |
+| ----------- | ----------------- | -------------------------------------- |
+| 미세먼지    | `'보통'` 하드코딩 | PM2.5 · PM10 실측 (㎍/㎥)              |
+| 대기질 등급 | 없음              | AQI 1~5 → 좋음/보통/나쁨/매우나쁨/최악 |
+
+## 여기서 호출 순서가 강제됐다
+
+`/weather` 는 `q=Seoul` 처럼 **도시명**을 받는데, `/air_pollution` 은 **좌표(lat, lon)만** 받는다.
+좌표를 도시마다 하드코딩해야 하나 싶었는데, `/weather` 응답 안에 `coord` 가 들어 있었다.
+
+```
+fetchCurrentWeather(도시명) → coord 획득 → fetchAirPollution(coord)
+```
+
+앞 호출의 결과가 뒤 호출의 입력이라 병렬로 못 돌린다.
+도시 6곳은 서로 독립이라 `Promise.allSettled` 로 병렬이고, 그 안에서 이 두 개만 순차다.
+**무엇이 병렬이고 무엇이 순차인지가 데이터 의존 관계로 정해진다**는 걸 이 지점에서 봤다.
+
+좌표를 하드코딩하지 않았으니 도시를 추가해도 대기질이 저절로 따라온다.
+
+## 대기질이 실패해도 날씨는 살린다
+
+```js
+const air = await fetchAirPollution(lat, lon)
+  .then(toAirShape)
+  .catch(() => null)
+```
+
+대기오염 호출이 터져도 `air` 만 `null` 이 되고 날씨는 그대로 뜬다.
+화면에서는 `v-if="city.air"` 로 갈라서, 실데이터면 수치를, 아니면 Mock 값에 `Mock` 배지를 붙인다.
+**지금 보는 게 진짜인지 아닌지 화면에서 구분되게** 하고 싶었다.
+
+AQI 는 1~5 정수로만 오는데, 숫자만 보면 좋은지 나쁜지 모른다.
+말(좋음~최악)과 색을 같이 붙였다.
+
 # 겪은 문제와 거기서 배운 것
 
 ## API 키가 6개 도시 전부 401 났다
@@ -232,6 +311,31 @@ const disabledDate = (date) => !weatherStore.availableDates(city.value.id).inclu
 
 `RouterView` 는 화면이 갈아 끼워지는 자리다. 그게 없으면 라우터 설정이 아무리 맞아도 아무것도 안 나온다.
 교재를 따라 지울 때 뭘 지우는지 보고 지워야 한다는 걸 배웠다.
+
+## 상세 페이지를 직접 열면 Mock 이 떴다
+
+대기오염을 붙이고 확인하는데, 목록에서 카드를 눌러 들어가면 실데이터가 나오고
+`/weather/city_01` 을 주소창에 직접 치면 Mock 이 나왔다.
+
+원인은 두 개가 겹쳐 있었다.
+
+1. `loadAllWeather()` 를 목록 화면에서만 부르고 있었다. 상세로 바로 들어오면 아직 안 불린 상태다.
+2. 상세 화면이 `onMounted` 에서 도시를 찾아 `ref` 에 **한 번 담고** 있었다.
+   나중에 실데이터가 들어와도 `ref` 는 처음 담은 Mock 객체를 계속 붙잡고 있었다.
+
+`ref` 를 `computed` 로 바꿔 스토어를 계속 바라보게 하고, 데이터가 없으면 상세에서도 직접 부르도록 고쳤다.
+
+```js
+// 전: onMounted 에서 한 번 찾아 담는다
+const city = ref(null)
+// 후: 스토어가 바뀌면 다시 계산된다
+const city = computed(() => weatherStore.findCity(route.params.cityId))
+```
+
+**"한 번 찾아서 담는다" 와 "계속 바라본다" 는 다르다**는 걸 이때 알았다.
+computed 를 파생 계산용으로만 생각했는데, 원본이 바뀔 수 있는 값을 참조할 때도 필요했다.
+
+이건 링크를 공유하거나 새로고침했을 때만 보이는 문제라, 목록에서 눌러서만 테스트했으면 못 찾았을 것이다.
 
 ## Prettier 가 교재 설명과 다르게 동작했다
 

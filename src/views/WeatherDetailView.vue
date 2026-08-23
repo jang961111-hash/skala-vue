@@ -40,24 +40,41 @@ const weatherStore = useWeatherStore()
 const route = useRoute()
 const router = useRouter()
 
-const city = ref(null)
-const notFound = ref(false)
+/* ================================================================
+   city 를 ref 가 아니라 computed 로 바꾼 이유
+   ================================================================
+   처음에는 onMounted 에서 찾은 결과를 ref 에 **한 번** 담았다.
+   그런데 상세 URL 로 바로 들어오면(북마크, 새로고침, 링크 공유)
+   목록 화면을 거치지 않아 loadAllWeather 가 아직 안 돈 상태였다.
+   그 시점의 스토어에는 Mock 밖에 없으니 Mock 이 담기고,
+   나중에 실데이터가 들어와도 ref 는 옛 객체를 그대로 붙잡고 있었다.
 
-onMounted(() => {
+   computed 로 바꾸면 스토어의 cities 가 갱신되는 순간 다시 계산된다.
+   "한 번 찾아서 담는다" 와 "스토어를 계속 바라본다" 의 차이다.
+   ================================================================ */
+const city = computed(() => weatherStore.findCity(route.params.cityId))
+
+// 경로 패턴은 맞는데 데이터가 없는 경우 (예: /weather/city_99)
+const notFound = computed(() => !city.value)
+
+onMounted(async () => {
   const cityId = route.params.cityId
   console.log(`[useRoute] 현재 경로: ${route.path} / 동적 파라미터 cityId: ${cityId}`)
 
-  const found = weatherStore.findCity(cityId)
-  if (found) {
-    city.value = found
-  } else {
-    notFound.value = true
+  if (notFound.value) {
     console.warn(`[WeatherDetail] "${cityId}" 에 해당하는 도시를 찾지 못했습니다.`)
+    return
+  }
+
+  // 이 화면으로 바로 들어왔다면 목록 화면을 안 거쳤으므로 아직 Mock 상태다.
+  // lastUpdated 가 비어 있는 것으로 판별해 여기서 직접 불러온다.
+  if (!weatherStore.lastUpdated) {
+    await weatherStore.loadAllWeather()
   }
 
   // [요구사항 2] OpenWeatherMap 의 다른 API 추가 — 3시간 단위 예보
   // 교수님 언급: "어느 지역을 클릭한 다음 그 지역의 3시간 단위 날씨를 가져온다든가"
-  if (found) weatherStore.loadForecast(cityId)
+  weatherStore.loadForecast(cityId)
 })
 
 /* ================================================================
@@ -159,8 +176,26 @@ const displayFeels = computed(() =>
         <div class="obs">
           <span>자외선</span><strong>{{ city.observation.uv }}</strong>
         </div>
+        <!--
+          [9단원 확장] 대기질은 Air Pollution API 실데이터.
+          city.air 가 있으면 실데이터, 없으면(키 없음/호출 실패) Mock 으로 떨어진다.
+          어느 쪽인지 화면에서 구분되도록 배지를 붙였다.
+        -->
         <div class="obs">
-          <span>미세먼지</span><strong>{{ city.observation.dust }}</strong>
+          <span>미세먼지 (PM2.5)</span>
+          <strong v-if="city.air">{{ city.air.pm25 }}<small class="unit">㎍/㎥</small></strong>
+          <strong v-else>{{ city.observation.dust }}<small class="mock">Mock</small></strong>
+        </div>
+        <div class="obs">
+          <span>대기질</span>
+          <strong v-if="city.air">
+            <span class="aqi" :class="`aqi-${city.air.aqi}`">{{ city.air.grade }}</span>
+          </strong>
+          <strong v-else>—</strong>
+        </div>
+        <div v-if="city.air" class="obs">
+          <span>미세먼지 (PM10)</span>
+          <strong>{{ city.air.pm10 }}<small class="unit">㎍/㎥</small></strong>
         </div>
       </section>
 
@@ -218,6 +253,47 @@ const displayFeels = computed(() =>
 </template>
 
 <style scoped>
+.aqi {
+  padding: 1px 9px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+/* AQI 1~5 를 색으로 구분. 숫자만 보면 좋은지 나쁜지 모른다. */
+.aqi-1 {
+  background: rgba(6, 182, 212, 0.18);
+  color: #0369a1;
+}
+.aqi-2 {
+  background: rgba(34, 197, 94, 0.18);
+  color: #15803d;
+}
+.aqi-3 {
+  background: rgba(234, 179, 8, 0.2);
+  color: #a16207;
+}
+.aqi-4 {
+  background: rgba(249, 115, 22, 0.2);
+  color: #c2410c;
+}
+.aqi-5 {
+  background: rgba(239, 68, 68, 0.2);
+  color: #b91c1c;
+}
+.unit {
+  margin-left: 3px;
+  font-size: 0.66rem;
+  font-weight: 400;
+  opacity: 0.6;
+}
+.mock {
+  margin-left: 5px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.6rem;
+  font-weight: 500;
+  background: rgba(127, 127, 127, 0.18);
+  opacity: 0.75;
+}
 .fc-head {
   display: flex;
   align-items: center;

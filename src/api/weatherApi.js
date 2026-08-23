@@ -83,6 +83,46 @@ export const fetchForecast = async (cityEnglish) => {
  *   응답을 그대로 화면에 뿌리면, API 가 바뀔 때 화면 전체를 고쳐야 한다.
  *   변환을 한 곳에 두면 여기만 고치면 된다. (Anti-Corruption Layer)
  */
+/**
+ * [교재 9단원 — 외부 라이브러리로 과제 확장 / 249p 요구사항 2]
+ * OpenWeather **Air Pollution API** 로 대기질을 가져온다.
+ *
+ * ▸ 왜 추가했나
+ *   상세 페이지의 미세먼지 값이 Mock 에 하드코딩돼 있었다.
+ *   날씨는 실데이터인데 대기질만 가짜라 앞뒤가 안 맞았다.
+ *
+ * ▸ 왜 도시명이 아니라 좌표를 받나
+ *   /weather 는 q=Seoul 처럼 도시명을 받지만,
+ *   /air_pollution 은 **좌표(lat, lon)만** 받는다.
+ *   다행히 /weather 응답에 coord 가 들어 있어서 그걸 그대로 넘긴다.
+ *   좌표를 따로 하드코딩하지 않아도 되고, 도시를 추가해도 저절로 따라온다.
+ *
+ * ▸ 응답 형태
+ *   { list: [ { main: { aqi: 1~5 }, components: { pm2_5, pm10, ... } } ] }
+ */
+export const fetchAirPollution = async (lat, lon) => {
+  const { data } = await weatherClient.get('/air_pollution', { params: { lat, lon } })
+  return data.list?.[0] ?? null
+}
+
+/**
+ * AQI 는 1~5 정수로만 온다. 사람이 읽는 말로 바꿔 준다.
+ * (WHO 기준이 아니라 OpenWeather 자체 등급이다)
+ */
+const AQI_LABEL = ['', '좋음', '보통', '나쁨', '매우나쁨', '최악']
+
+export const toAirShape = (raw) => {
+  if (!raw) return null
+  return {
+    aqi: raw.main.aqi,
+    grade: AQI_LABEL[raw.main.aqi] ?? '알수없음',
+    pm25: Math.round(raw.components.pm2_5),
+    pm10: Math.round(raw.components.pm10),
+    o3: raw.components.o3,
+    isLive: true,
+  }
+}
+
 export const toCityShape = (raw, base) => ({
   ...base,
   temp: Math.round(raw.main.temp),
@@ -91,6 +131,8 @@ export const toCityShape = (raw, base) => ({
   wind: Number(raw.wind.speed.toFixed(1)),
   status: raw.weather?.[0]?.description ?? base.status,
   icon: raw.weather?.[0]?.icon ?? null,
+  // 대기오염 API 가 좌표를 요구하므로 여기서 받아 둔다
+  coord: raw.coord ?? null,
   observation: {
     ...base.observation,
     pressure: raw.main.pressure,
