@@ -27,7 +27,7 @@
 -->
 <script setup>
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
-import { toLocalHM } from '../composables/usePhotoTime.js'
+import LightTimeline from '../components/LightTimeline.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import { useWeatherStore } from '../stores/weatherStore.js'
@@ -106,17 +106,7 @@ watch(
    여기서는 시각만 보여주고 점수는 상세 페이지에서 낸다.
    첫 화면은 가볍게 유지하는 쪽을 택했다.
    ================================================================ */
-const goldenHours = computed(() =>
-  weatherList.value
-    .filter((c) => c.sunset)
-    .map((c) => ({
-      id: c.id,
-      name: c.name,
-      // 저녁 골든아워 = 해 지기 전 1시간
-      from: toLocalHM(c.sunset - 3600, c.timezone ?? 0),
-      to: toLocalHM(c.sunset, c.timezone ?? 0),
-    })),
-)
+const timelineCities = computed(() => weatherList.value.filter((c) => c.sunrise && c.sunset))
 
 onMounted(() => {
   // 교재 153p — Mounting 이 API 호출 최적 타이밍
@@ -160,17 +150,11 @@ const handleClickDetail = (cityName) => {
       </p>
     </header>
 
-    <!-- 오늘의 저녁 골든아워 — 이미 받아온 일몰 시각만 쓰므로 추가 호출이 없다 -->
-    <section v-if="goldenHours.length" class="golden-strip">
-      <span class="gs-label">🌇 오늘 저녁 골든아워</span>
-      <ul>
-        <li v-for="g in goldenHours" :key="g.id">
-          <RouterLink :to="`/weather/${g.id}`">
-            <b>{{ g.name }}</b>
-            <span>{{ g.from }}–{{ g.to }}</span>
-          </RouterLink>
-        </li>
-      </ul>
+    <!-- 도시별 하루 빛 흐름. 일출·일몰은 이미 받아 온 값이라 추가 호출이 없다. -->
+    <section v-if="timelineCities.length" class="tl-grid">
+      <RouterLink v-for="c in timelineCities" :key="c.id" :to="`/weather/${c.id}`" class="tl-card">
+        <LightTimeline :city="c" />
+      </RouterLink>
     </section>
 
     <!-- 교재 230p — 데이터 출처/상태 표시 -->
@@ -258,44 +242,23 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
-.golden-strip {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 11px 15px;
-  margin-bottom: 18px;
-  border-radius: 12px;
-  background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(6, 182, 212, 0.1));
+.tl-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--gap-2);
+  margin-bottom: var(--gap-4);
 }
-.gs-label {
-  font-size: 0.78rem;
-  font-weight: 650;
-  white-space: nowrap;
-}
-.golden-strip ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 8px;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.golden-strip a {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--color-background);
+.tl-card {
+  display: block;
+  padding: var(--gap-3);
   border: 1px solid var(--color-border);
-  font-size: 0.76rem;
+  border-radius: var(--radius);
   text-decoration: none;
   color: inherit;
+  transition: border-color 0.18s ease;
 }
-.golden-strip a span {
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
+.tl-card:hover {
+  border-color: var(--golden);
 }
 
 .data-status {

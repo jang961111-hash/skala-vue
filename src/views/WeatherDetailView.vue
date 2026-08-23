@@ -31,6 +31,7 @@ import { useWeatherStore } from '../stores/weatherStore.js'
 import { useConfigStore } from '../stores/configStore.js'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import PhotoPlanner from '../components/PhotoPlanner.vue'
+import LightTimeline from '../components/LightTimeline.vue'
 import { bestVentilation } from '../composables/useVentilation.js'
 
 // 교재 212p 요구사항 3 — 상세 페이지에도 같은 단위 설정이 적용된다.
@@ -216,6 +217,11 @@ const displayFeels = computed(() =>
       </section>
 
       <!-- [요구사항 2] 3시간 단위 예보 (OpenWeatherMap /forecast API) -->
+      <!-- 시그니처 — 하루의 빛이 어떻게 지나가는지 한 줄로 -->
+      <section class="timeline-wrap">
+        <LightTimeline :city="city" />
+      </section>
+
       <!-- 앱 주제 — 사진 찍기 좋은 시간 -->
       <PhotoPlanner :city="city" :forecast="allForecast" :air-table="airTable" />
 
@@ -306,6 +312,13 @@ const displayFeels = computed(() =>
 </template>
 
 <style scoped>
+.timeline-wrap {
+  margin: var(--gap-3) 0;
+  padding: var(--gap-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+}
+
 .vent {
   margin-top: 22px;
 }
