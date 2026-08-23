@@ -51,6 +51,7 @@ npm run build:production  # .env.production 을 읽어 빌드
 | `/weather/:cityId` | 상세      | 동적 세그먼트. 3시간 단위 예보            |
 | `/stats`           | 통계      | `?sort=` 쿼리스트링으로 정렬              |
 | `/about`           | 소개      | 구현 현황, 빌드 환경 변수 표시            |
+| `/practice`        | 실습 모음 | 연습·실습·Code Challenge 43개             |
 | `/history/*`       | 학습 이력 | 116p·145p·178p 버전을 지우지 않고 남겨 둠 |
 | `/:pathMatch(.*)*` | 404       | 반드시 맨 마지막에 등록                   |
 
