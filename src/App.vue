@@ -31,6 +31,8 @@ import UnitToggler from './components/handson/weather/UnitToggler.vue'
       <RouterLink to="/">대시보드</RouterLink>
       <RouterLink to="/stats">통계</RouterLink>
       <RouterLink to="/about">소개</RouterLink>
+      <!-- 교재 60p~248p 연습 · 실습 · Code Challenge 모음 -->
+      <RouterLink to="/practice">실습</RouterLink>
     </nav>
 
     <!-- 교재 212p 요구사항 2: Navigation Bar 옆에 UnitToggler 배치 -->

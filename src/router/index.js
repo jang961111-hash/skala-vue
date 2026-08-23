@@ -75,6 +75,15 @@ const router = createRouter({
       component: () => import('../views/ComponentView.vue'),
     },
 
+    /* ── 단원별 실습 · Code Challenge (교재 60p~248p) ── */
+    {
+      path: '/practice',
+      name: 'practice',
+      // 실습 컴포넌트 50개를 한꺼번에 import 하는 화면이라 지연 로딩이 특히 중요하다.
+      // 이 경로에 들어갈 때만 받아오므로 첫 화면 로딩에는 영향이 없다.
+      component: () => import('../views/PracticeView.vue'),
+    },
+
     /* ── 요구사항 1 : Catch-all (195p) — 반드시 마지막 ── */
     {
       path: '/:pathMatch(.*)*',
