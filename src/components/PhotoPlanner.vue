@@ -19,8 +19,29 @@
 import { computed, ref } from 'vue'
 import { photoPlan, toLocalHM } from '../composables/usePhotoTime.js'
 
+/* ================================================================
+   [교재 158p] props 옵션 — type / required / default / validator
+   ================================================================
+   validator 는 부모가 넘긴 값이 이 컴포넌트가 감당할 수 있는 모양인지
+   자식이 직접 검사하는 함수다. false 를 돌려주면 개발 중 콘솔에 경고가 뜬다.
+
+   여기서는 city 에 sunrise·sunset 이 있어야만 촬영 구간을 만들 수 있다.
+   없는 채로 들어오면 화면이 조용히 비어버려서 원인을 찾기 어렵다.
+   그래서 "왜 안 나오는지"를 콘솔이 먼저 알려주게 했다.
+
+   배열·객체를 default 로 줄 때는 반드시 화살표 함수로 감싸 반환한다.
+   그대로 쓰면 모든 인스턴스가 같은 객체를 공유한다.
+   ================================================================ */
 const props = defineProps({
-  city: { type: Object, required: true },
+  city: {
+    type: Object,
+    required: true,
+    validator: (c) => {
+      const ok = Boolean(c && c.sunrise && c.sunset)
+      if (!ok) console.warn('[PhotoPlanner] city 에 sunrise/sunset 이 없습니다.', c)
+      return ok
+    },
+  },
   forecast: { type: Array, default: () => [] },
   airTable: { type: Object, default: () => ({}) },
 })

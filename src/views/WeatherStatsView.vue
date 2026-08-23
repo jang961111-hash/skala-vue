@@ -24,15 +24,33 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { weatherMockData } from '../data/weatherMockData.js'
+import { useWeatherStore } from '../stores/weatherStore.js'
+
+/* 원래 이 화면만 weatherStore.cities 를 직접 import 해서 쓰고 있었다.
+   다른 화면은 스토어의 실시간 데이터를 보는데 통계만 고정값이라
+   기온이 안 맞았다. 스토어를 보도록 바꿨다.
+   스토어는 초기값이 Mock 이라 키가 없어도 그대로 동작한다. */
+const weatherStore = useWeatherStore()
 
 const route = useRoute()
 const router = useRouter()
 
 const sortKey = ref('temp')
 
+/* 라디오도 "선택 가능한 게 하나"라 string 이다 (교재 110p).
+   v-model 을 같은 변수에 걸고 :value 로 각 항목의 값을 준다. */
+const DIRECTIONS = [
+  { value: 'desc', label: '높은 순' },
+  { value: 'asc', label: '낮은 순' },
+]
+const sortDir = ref('desc')
+
 // 교재 189p — 마운트 시 주소창의 ?sort= 값으로 상태 복원
 onMounted(() => {
+  // 이 화면으로 바로 들어왔다면 아직 Mock 이다. 상세 화면과 같은 방식으로 처리한다.
+  if (!weatherStore.lastUpdated) weatherStore.loadAllWeather()
+
+  if (route.query.dir) sortDir.value = route.query.dir
   if (route.query.sort) {
     sortKey.value = route.query.sort
     console.log(`[useRoute] 쿼리스트링에서 정렬 기준 복원: "${route.query.sort}"`)
@@ -42,21 +60,23 @@ onMounted(() => {
 const changeSort = (key) => {
   sortKey.value = key
   // 정렬 상태를 주소창에 반영 (191p router.replace — 뒤로가기 기록을 쌓지 않는다)
-  router.replace({ query: { sort: key } })
+  router.replace({ query: { sort: key, dir: sortDir.value } })
 }
 
 const sortedList = computed(() => {
-  const copy = [...weatherMockData]
-  if (sortKey.value === 'humid') return copy.sort((a, b) => b.humidity - a.humidity)
-  if (sortKey.value === 'wind') return copy.sort((a, b) => b.wind - a.wind)
-  return copy.sort((a, b) => b.temp - a.temp)
+  const copy = [...weatherStore.cities]
+  const pick = (c) =>
+    sortKey.value === 'humid' ? c.humidity : sortKey.value === 'wind' ? c.wind : c.temp
+  // 방향만 부호로 뒤집는다. 정렬 함수를 세 벌 쓰지 않아도 된다.
+  const sign = sortDir.value === 'asc' ? -1 : 1
+  return copy.sort((a, b) => (pick(b) - pick(a)) * sign)
 })
 
-const hottest = computed(() => [...weatherMockData].sort((a, b) => b.temp - a.temp)[0])
-const coldest = computed(() => [...weatherMockData].sort((a, b) => a.temp - b.temp)[0])
-const rainyCount = computed(() => weatherMockData.filter((c) => c.status === '비').length)
+const hottest = computed(() => [...weatherStore.cities].sort((a, b) => b.temp - a.temp)[0])
+const coldest = computed(() => [...weatherStore.cities].sort((a, b) => a.temp - b.temp)[0])
+const rainyCount = computed(() => weatherStore.cities.filter((c) => c.status === '비').length)
 const avgTemp = computed(() =>
-  (weatherMockData.reduce((s, c) => s + c.temp, 0) / weatherMockData.length).toFixed(1),
+  (weatherStore.cities.reduce((s, c) => s + c.temp, 0) / weatherStore.cities.length).toFixed(1),
 )
 
 const unitOf = (key) => (key === 'humid' ? '%' : key === 'wind' ? 'm/s' : '℃')
@@ -74,18 +94,50 @@ const goDetail = (id) => router.push(`/weather/${id}`)
     </header>
 
     <section class="highlight">
-      <div class="hl"><span>최고 기온</span><strong>{{ hottest.name }} {{ hottest.temp }}℃</strong></div>
-      <div class="hl"><span>최저 기온</span><strong>{{ coldest.name }} {{ coldest.temp }}℃</strong></div>
-      <div class="hl"><span>평균 기온</span><strong>{{ avgTemp }}℃</strong></div>
-      <div class="hl"><span>강수 도시</span><strong>{{ rainyCount }}곳</strong></div>
+      <div class="hl">
+        <span>최고 기온</span><strong>{{ hottest.name }} {{ hottest.temp }}℃</strong>
+      </div>
+      <div class="hl">
+        <span>최저 기온</span><strong>{{ coldest.name }} {{ coldest.temp }}℃</strong>
+      </div>
+      <div class="hl">
+        <span>평균 기온</span><strong>{{ avgTemp }}℃</strong>
+      </div>
+      <div class="hl">
+        <span>강수 도시</span><strong>{{ rainyCount }}곳</strong>
+      </div>
     </section>
 
+    <!-- ================================================================
+         [교재 110p] 입력 요소별 반응형 변수 타입
+         ================================================================
+         select(단일) 과 라디오는 **선택 가능한 게 하나**라 string 을 쓴다.
+           sortKey  = ref('temp')   select 단일
+           sortDir  = ref('desc')   라디오
+         여러 개를 담아야 하는 체크박스 다중 선택은 array 를 쓴다 (홈 화면).
+
+         원래 버튼 3개였는데 select 로 바꿨다. 항목이 늘어나도 가로로
+         번지지 않고, 무엇이 선택돼 있는지 접힌 상태에서도 보인다.
+         ================================================================ -->
     <div class="sort-bar">
-      <span>정렬 기준</span>
-      <button :class="{ on: sortKey === 'temp' }" @click="changeSort('temp')">기온</button>
-      <button :class="{ on: sortKey === 'humid' }" @click="changeSort('humid')">습도</button>
-      <button :class="{ on: sortKey === 'wind' }" @click="changeSort('wind')">풍속</button>
-      <code>?sort={{ sortKey }}</code>
+      <label class="ctrl">
+        <span>정렬 기준</span>
+        <select v-model="sortKey" @change="changeSort(sortKey)">
+          <option value="temp">기온</option>
+          <option value="humid">습도</option>
+          <option value="wind">풍속</option>
+        </select>
+      </label>
+
+      <fieldset class="ctrl radio-set">
+        <legend>순서</legend>
+        <label v-for="d in DIRECTIONS" :key="d.value">
+          <input v-model="sortDir" type="radio" name="dir" :value="d.value" />
+          {{ d.label }}
+        </label>
+      </fieldset>
+
+      <code>?sort={{ sortKey }}&dir={{ sortDir }}</code>
     </div>
 
     <ol class="rank">
@@ -103,13 +155,47 @@ const goDetail = (id) => router.push(`/weather/${id}`)
     </ol>
 
     <p class="note">
-      정렬 버튼을 누르면 주소창이 바뀝니다. 그 URL 을 복사해서 새 탭에 붙여넣어도 같은 정렬 상태로
+      정렬을 바꾸면 주소창이 바뀝니다. 그 URL 을 복사해서 새 탭에 붙여넣어도 같은 정렬 상태로
       열립니다. 항목을 클릭하면 상세 페이지로 이동합니다.
     </p>
   </main>
 </template>
 
 <style scoped>
+.ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--gap-1);
+  font-size: 0.82rem;
+}
+.ctrl select {
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+}
+.radio-set {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 2px 10px 4px;
+  margin: 0;
+}
+.radio-set legend {
+  font-size: 0.68rem;
+  opacity: 0.65;
+  padding: 0 4px;
+}
+.radio-set label {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-right: 8px;
+  cursor: pointer;
+}
+
 .stats {
   max-width: 820px;
   margin: 0 auto;

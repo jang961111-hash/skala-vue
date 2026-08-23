@@ -54,15 +54,38 @@ const searchQuery = ref('')
 const selectedCityInfo = ref('')
 const onlyRainy = ref(false)
 
+/* ================================================================
+   [교재 110p] 체크박스 다중 선택 — 여러 개를 담아야 하므로 array
+   ================================================================
+   같은 v-model 을 여러 체크박스에 걸고 각각 :value 를 주면
+   Vue 가 체크된 것들만 모아 배열에 넣어 준다.
+
+     체크박스 단일  ref(false)  boolean   ← onlyRainy, onlyFavorite
+     체크박스 다중  ref([])     array     ← 여기
+     라디오·select ref('')     string    ← 통계 화면
+
+   원칙은 하나다. "선택 가능한 게 하나면 string, 여러 개 담기면 array."
+
+   빈 배열이면 전체를 보여준다. 아무것도 안 고른 상태를 "결과 없음"으로
+   처리하면 처음 들어온 사람이 빈 화면을 본다.
+   ================================================================ */
+const SKY_OPTIONS = ['맑음', '구름', '흐림', '비']
+const skyFilter = ref([])
+
+/** 도시의 상태 문구가 고른 항목 중 하나라도 포함하는가 */
+const matchSky = (city) =>
+  skyFilter.value.length === 0 || skyFilter.value.some((k) => (city.status ?? '').includes(k))
+
 /* ── computed 3종 (145p 유지) ── */
 const filteredWeatherList = computed(() => {
   const query = searchQuery.value.trim()
-  if (!query && !onlyRainy.value && !onlyFavorite.value) return weatherList.value
+  if (!query && !onlyRainy.value && !onlyFavorite.value && skyFilter.value.length === 0)
+    return weatherList.value
   return weatherList.value.filter((city) => {
     const matchKeyword = !query || city.name.includes(query)
     const matchRainy = !onlyRainy.value || city.status === '비'
     const matchFav = !onlyFavorite.value || favoriteStore.isFavorite(city.id)
-    return matchKeyword && matchRainy && matchFav
+    return matchKeyword && matchRainy && matchFav && matchSky(city)
   })
 })
 
@@ -108,6 +131,15 @@ watch(
    ================================================================ */
 const timelineCities = computed(() => weatherList.value.filter((c) => c.sunrise && c.sunset))
 
+/* [교재 102p] 검색창에서 Enter → 첫 결과로 바로 이동.
+   결과가 없으면 아무 일도 일어나지 않게 둔다. 없는 곳으로 보내면
+   사용자가 뭘 잘못했는지 모른 채 화면만 바뀐다. */
+const goFirstResult = () => {
+  const first = filteredWeatherList.value[0]
+  if (!first) return
+  router.push(`/weather/${first.id}`)
+}
+
 onMounted(() => {
   // 교재 153p — Mounting 이 API 호출 최적 타이밍
   weatherStore.loadAllWeather()
@@ -150,6 +182,18 @@ const handleClickDetail = (cityName) => {
       </p>
     </header>
 
+    <!-- [교재 110p] 체크박스 다중 선택 → 배열. 여러 개를 동시에 고를 수 있다. -->
+    <fieldset class="sky-filter">
+      <legend>하늘 상태</legend>
+      <label v-for="opt in SKY_OPTIONS" :key="opt" :class="{ on: skyFilter.includes(opt) }">
+        <input v-model="skyFilter" type="checkbox" :value="opt" />
+        {{ opt }}
+      </label>
+      <button v-if="skyFilter.length" class="sky-clear" @click="skyFilter = []">
+        해제 ({{ skyFilter.length }})
+      </button>
+    </fieldset>
+
     <!-- 도시별 하루 빛 흐름. 일출·일몰은 이미 받아 온 값이라 추가 호출이 없다. -->
     <section v-if="timelineCities.length" class="tl-grid">
       <RouterLink v-for="c in timelineCities" :key="c.id" :to="`/weather/${c.id}`" class="tl-card">
@@ -185,6 +229,7 @@ const handleClickDetail = (cityName) => {
         :only-rainy="onlyRainy"
         @update-query="handleUpdateQuery"
         @update-rainy="handleUpdateRainy"
+        @submit-search="goFirstResult"
       />
     </BaseDashboardCard>
 
@@ -242,6 +287,45 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+.sky-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-1) var(--gap-2);
+  flex-wrap: wrap;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px 7px;
+  margin: 0 0 var(--gap-3);
+}
+.sky-filter legend {
+  font-size: 0.68rem;
+  opacity: 0.65;
+  padding: 0 4px;
+}
+.sky-filter label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+.sky-filter label.on {
+  background: var(--paper-mute);
+}
+.sky-clear {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 .tl-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));

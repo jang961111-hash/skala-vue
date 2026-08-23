@@ -28,6 +28,11 @@
   ================================================================
 -->
 <script setup>
+/* [교재 102p] 키보드 Event Modifier
+   교수님: "키보드 단축키는 비즈니스 앱에서 유용하다."
+   검색창에서 Enter 를 누르면 첫 번째 결과로 바로 이동하게 했다.
+   @keyup.enter 는 e.key === 'Enter' 를 직접 검사하는 것과 같지만
+   조건문 없이 템플릿에서 끝난다. */
 defineProps({
   searchQuery: {
     type: String,
@@ -39,7 +44,7 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['update-query', 'update-rainy'])
+const emit = defineEmits(['update-query', 'update-rainy', 'submit-search'])
 
 // 입력이 일어날 때마다 부모에게 새 값을 실어 보낸다
 const onInput = (e) => {
@@ -60,6 +65,7 @@ const onToggleRainy = (e) => {
       placeholder="🔎 도시 이름으로 검색 (예: 서울, 부산)"
       :value="searchQuery"
       @input="onInput"
+      @keyup.enter="emit('submit-search')"
     />
 
     <p class="echo">

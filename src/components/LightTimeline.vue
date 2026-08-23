@@ -14,7 +14,9 @@
         블루아워 → --dawn   골든아워 → --golden   한낮 → 옅은 중성
 
   ▸ 지금 시각 마커
-      현재 위치를 세로선으로 표시하고, 지나간 구간은 살짝 흐리게 둔다.
+      현재 위치를 세로선으로 표시한다. 1분마다 스스로 갱신되고,
+      화면에서 사라질 때 타이머를 정리한다.
+      지나간 구간은 살짝 흐리게 둔다.
       단, 촬영 구간(골든·블루)은 덜 흐리게 한다.
       이 막대의 목적은 "오늘 남은 시간"이 아니라
       "하루의 빛이 어떻게 흐르는가"이기 때문이다.
@@ -25,7 +27,7 @@
   ================================================================
 -->
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({
   /** 도시 하나. sunrise / sunset / timezone 이 필요하다. */
@@ -80,11 +82,40 @@ const bands = computed(() => {
   ].filter((b) => b.to > b.from)
 })
 
-/** 지금이 하루의 몇 % 지점인가 */
-const nowPct = computed(() => {
-  const nowUtc = Math.floor(Date.now() / 1000)
-  return pct(nowUtc)
+/* ================================================================
+   현재 시각 마커를 살아 있게 한다 (교재 153p 라이프사이클)
+   ================================================================
+   처음에는 Date.now() 를 computed 안에서 바로 읽었다. 그런데
+   Date.now() 는 반응형이 아니라서 다른 값이 바뀌기 전까지 마커가
+   그 자리에 멈춰 있었다. 화면을 열어두면 시간이 흘러도 안 움직인다.
+
+   그래서 시각을 ref 에 담고 타이머로 갱신한다.
+     onMounted   1분마다 갱신하는 타이머 등록
+     onUnmounted **반드시** 정리
+
+   교수님: "안 하면 브라우저 메모리를 계속 사용한다."
+   이 컴포넌트는 홈에서 6개가 동시에 뜨고 라우팅으로 자주 사라진다.
+   정리하지 않으면 페이지를 오갈 때마다 타이머가 쌓인다.
+
+   1분 간격으로 잡은 이유: 이 막대는 하루(1440분)를 나타내므로
+   1분은 가로로 0.07% 다. 더 자주 갱신해도 눈에 보이지 않는다.
+   ================================================================ */
+const nowUtc = ref(Math.floor(Date.now() / 1000))
+let timerId = null
+
+onMounted(() => {
+  timerId = setInterval(() => {
+    nowUtc.value = Math.floor(Date.now() / 1000)
+  }, 60_000)
 })
+
+onUnmounted(() => {
+  clearInterval(timerId)
+  timerId = null
+})
+
+/** 지금이 하루의 몇 % 지점인가 */
+const nowPct = computed(() => pct(nowUtc.value))
 
 /** 눈금 — 6시간마다. 촘촘하면 오히려 안 읽힌다. */
 const ticks = [0, 25, 50, 75, 100]
