@@ -29,6 +29,8 @@
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import LightTimeline from '../components/LightTimeline.vue'
 import { toLocalHM } from '../composables/usePhotoTime.js'
+import { useGeolocation } from '../composables/useGeolocation.js'
+import PhotoPlanner from '../components/PhotoPlanner.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import { useWeatherStore } from '../stores/weatherStore.js'
@@ -131,6 +133,35 @@ watch(
    첫 화면은 가볍게 유지하는 쪽을 택했다.
    ================================================================ */
 const timelineCities = computed(() => weatherList.value.filter((c) => c.sunrise && c.sunset))
+
+/* ================================================================
+   내 위치 (9단원 확장)
+   ================================================================
+   만들다 보니 구조가 앞뒤가 안 맞는 걸 알았다.
+   도시 7곳의 촬영 시간을 보여주는데 **사진은 도시 단위로 찍지 않는다.**
+   서울 사람에게 부산 골든아워는 정보가 아니다.
+
+   실제로 우리 데이터에서도 부산 19:04, 서울 19:15 로 11분이 차이난다.
+   골든아워는 위도·경도로 정해지니까, "내 위치"가 있어야 이 앱이 쓸모가 생긴다.
+
+   버튼을 눌렀을 때만 권한을 묻는다. 열자마자 위치를 묻는 사이트는
+   무엇에 쓰는지 모르는 상태라 거절당한다.
+   ================================================================ */
+const geo = useGeolocation()
+
+const useMyLocation = async () => {
+  const c = await geo.locate()
+  if (!c) return
+  await weatherStore.loadByCoord(c.lat, c.lon, c.accuracy)
+}
+
+const myPlace = computed(() => weatherStore.myPlace)
+const myForecast = computed(() =>
+  myPlace.value ? (weatherStore.forecastMap[myPlace.value.id] ?? []) : [],
+)
+const myAirTable = computed(() =>
+  myPlace.value ? (weatherStore.airForecastMap[myPlace.value.id] ?? {}) : {},
+)
 
 /* ================================================================
    지금 기준으로 가장 가까운 촬영 시간 하나
@@ -244,6 +275,46 @@ const handleClickDetail = (cityName) => {
       </p>
     </header>
 
+    <!-- ================================================================
+         내 위치 — 이 앱에서 제일 쓸모 있는 자리
+         ================================================================
+         사진은 내가 서 있는 곳에서 찍는다. 도시 목록은 참고고,
+         실제로 필요한 건 여기다.
+         ================================================================ -->
+    <section class="myloc">
+      <div class="myloc-head">
+        <div>
+          <h3>📍 내 위치에서</h3>
+          <p class="myloc-sub">
+            지금 있는 자리의 일출·일몰과 하늘 상태로 촬영 시간을 계산합니다. 위치는 이 브라우저
+            안에서만 쓰이고 어디에도 저장하지 않습니다.
+          </p>
+        </div>
+        <button
+          class="myloc-btn"
+          type="button"
+          :disabled="geo.isLocating.value || weatherStore.isLocatingWeather"
+          @click="useMyLocation"
+        >
+          {{ geo.isLocating.value || weatherStore.isLocatingWeather ? '찾는 중…' : '내 위치 사용' }}
+        </button>
+      </div>
+
+      <p v-if="geo.error.value" class="myloc-err">{{ geo.error.value }}</p>
+
+      <template v-if="myPlace">
+        <div class="myloc-meta">
+          <b>{{ myPlace.name }}</b>
+          <span>{{ myPlace.temp }}{{ configStore.unitSymbol === '℉' ? '' : '℃' }}</span>
+          <span>{{ myPlace.status }}</span>
+          <span v-if="myPlace.accuracy" class="acc">오차 약 {{ myPlace.accuracy }}m</span>
+          <button class="myloc-clear" type="button" @click="weatherStore.clearMyPlace">해제</button>
+        </div>
+        <LightTimeline :city="myPlace" />
+        <PhotoPlanner :city="myPlace" :forecast="myForecast" :air-table="myAirTable" />
+      </template>
+    </section>
+
     <!-- [교재 110p] 체크박스 다중 선택 → 배열. 여러 개를 동시에 고를 수 있다. -->
     <fieldset class="sky-filter">
       <legend>하늘 상태</legend>
@@ -349,6 +420,71 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+.myloc {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--gap-3);
+  margin-bottom: var(--gap-3);
+}
+.myloc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-3);
+  flex-wrap: wrap;
+}
+.myloc h3 {
+  font-size: var(--step-1);
+  font-weight: 650;
+}
+.myloc-sub {
+  font-size: 0.76rem;
+  color: var(--ink-mute);
+  margin-top: 3px;
+  max-width: 48ch;
+}
+.myloc-btn {
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-background-soft);
+  color: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.myloc-btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.myloc-err {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  color: var(--bad);
+}
+.myloc-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-2);
+  flex-wrap: wrap;
+  margin: var(--gap-3) 0 var(--gap-2);
+  font-size: 0.85rem;
+}
+.myloc-meta .acc {
+  font-size: 0.72rem;
+  color: var(--ink-mute);
+}
+.myloc-clear {
+  margin-left: auto;
+  font-size: 0.72rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* 히어로 — 배경은 하루의 빛 색을 아주 옅게 깐 것뿐이다.
    장식을 더 얹지 않고 타이포와 여백으로만 화면을 잡는다. */
 .hero {

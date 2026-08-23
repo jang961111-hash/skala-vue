@@ -84,6 +84,24 @@ export const fetchForecast = async (cityEnglish) => {
  *   변환을 한 곳에 두면 여기만 고치면 된다. (Anti-Corruption Layer)
  */
 /**
+ * 좌표로 현재 날씨 — 내 위치 기능용.
+ *
+ * /weather 는 도시명(q) 도 받고 좌표(lat, lon) 도 받는다.
+ * 도시 목록은 q 로, 내 위치는 좌표로 부른다. 같은 응답 형태라
+ * toCityShape 를 그대로 재사용할 수 있다.
+ */
+export const fetchWeatherByCoord = async (lat, lon) => {
+  const { data } = await weatherClient.get('/weather', { params: { lat, lon } })
+  return data
+}
+
+/** 좌표로 3시간 예보 (내 위치용) */
+export const fetchForecastByCoord = async (lat, lon) => {
+  const { data } = await weatherClient.get('/forecast', { params: { lat, lon } })
+  return data
+}
+
+/**
  * [9단원 확장] 대기질 **예보** — /air_pollution/forecast
  *
  * 현재 대기질(/air_pollution)과 달리 앞으로 4일치를 **1시간 간격 96건**으로 준다.

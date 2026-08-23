@@ -32,6 +32,8 @@ import {
   fetchAirPollution,
   toAirShape,
   fetchAirForecast,
+  fetchWeatherByCoord,
+  fetchForecastByCoord,
 } from '../api/weatherApi.js'
 
 export const useWeatherStore = defineStore('weather', () => {
@@ -75,7 +77,81 @@ export const useWeatherStore = defineStore('weather', () => {
     }
   }
 
-  const findCity = (cityId) => cities.value.find((c) => c.id === cityId)
+  /* ================================================================
+     내 위치 (교재 9단원 확장 — 브라우저 Geolocation + 좌표 기반 API)
+     ================================================================
+     도시 목록과 나란히 두지 않고 **따로** 관리한다.
+     cities 배열에 끼워 넣으면 "내 위치"가 검색·필터·통계에 섞여
+     의미가 흐려진다. 성격이 다른 데이터는 따로 두는 게 맞다고 봤다.
+
+     id 를 'my_location' 으로 고정해 예보·대기질 조회표에서도
+     도시들과 같은 방식으로 다룰 수 있게 했다.
+     ================================================================ */
+  const MY_ID = 'my_location'
+  const myPlace = ref(null)
+  const isLocatingWeather = ref(false)
+
+  const loadByCoord = async (lat, lon, accuracy = null) => {
+    if (!hasApiKey) {
+      console.warn('[weatherStore] API 키가 없어 내 위치 날씨를 가져올 수 없습니다.')
+      return null
+    }
+    isLocatingWeather.value = true
+    try {
+      const raw = await fetchWeatherByCoord(lat, lon)
+      const base = {
+        id: MY_ID,
+        // API 가 돌려주는 지명을 그대로 쓴다. 좌표를 이름으로 바꾸는 건
+        // 별도 지오코딩이 필요한데, /weather 응답에 이미 들어 있다.
+        name: raw.name || '내 위치',
+        english: raw.name ?? '',
+        status: raw.weather?.[0]?.description ?? '',
+        observation: { station: '—', pressure: null, visibility: null, uv: null, dust: '—' },
+      }
+      const shaped = { ...toCityShape(raw, base), accuracy, isMine: true }
+
+      // 예보·대기질도 같은 좌표로 이어서 받는다 (사진 지수 계산에 필요)
+      const [fcRaw, air] = await Promise.all([
+        fetchForecastByCoord(lat, lon).catch(() => null),
+        fetchAirPollution(lat, lon)
+          .then(toAirShape)
+          .catch(() => null),
+      ])
+      if (fcRaw?.list) {
+        forecastMap.value[MY_ID] = fcRaw.list.map((it) => ({
+          date: it.dt_txt.slice(0, 10),
+          time: it.dt_txt.slice(5, 16),
+          hour: it.dt_txt.slice(11, 16),
+          temp: Math.round(it.main.temp),
+          status: it.weather?.[0]?.description ?? '',
+          pop: Math.round((it.pop ?? 0) * 100),
+          humidity: it.main.humidity,
+          wind: Number((it.wind?.speed ?? 0).toFixed(1)),
+          clouds: it.clouds?.all ?? null,
+          dt: it.dt,
+          utcKey: new Date(it.dt * 1000).toISOString().slice(0, 13),
+        }))
+      }
+      myPlace.value = { ...shaped, air }
+      await loadAirForecast(MY_ID)
+      console.log(`[weatherStore] 내 위치(${myPlace.value.name}) 날씨 수신`)
+      return myPlace.value
+    } catch (error) {
+      console.warn('[weatherStore] 내 위치 날씨 실패', error?.message)
+      return null
+    } finally {
+      isLocatingWeather.value = false
+    }
+  }
+
+  const clearMyPlace = () => {
+    myPlace.value = null
+    delete forecastMap.value[MY_ID]
+    delete airForecastMap.value[MY_ID]
+  }
+
+  const findCity = (cityId) =>
+    cityId === MY_ID ? myPlace.value : cities.value.find((c) => c.id === cityId)
 
   /**
    * [교재 249p] 특정 도시의 예보에서 **선택 가능한 날짜 목록**을 뽑는다.
@@ -201,6 +277,10 @@ export const useWeatherStore = defineStore('weather', () => {
     apiKeyReady,
     statusLabel,
     findCity,
+    myPlace,
+    isLocatingWeather,
+    loadByCoord,
+    clearMyPlace,
     airForecastMap,
     loadAirForecast,
     availableDates,

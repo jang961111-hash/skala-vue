@@ -82,6 +82,17 @@ export const weatherMockData = [
     feelsLike: 27,
     observation: { station: 'TJN', pressure: 1007, visibility: 10, uv: 4, dust: '나쁨' },
   },
+  {
+    id: 'city_07',
+    name: '광주',
+    english: 'Gwangju',
+    temp: 27,
+    status: '맑음',
+    humidity: 61,
+    wind: 1.4,
+    feelsLike: 29,
+    observation: { station: 'KWJ', pressure: 1009, visibility: 12, uv: 6, dust: '보통' },
+  },
 ]
 
 /**
