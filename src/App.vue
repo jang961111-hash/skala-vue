@@ -21,6 +21,9 @@
 -->
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
+import { useConfigStore } from './stores/configStore.js'
+
+const configStore = useConfigStore()
 import UnitToggler from './components/handson/weather/UnitToggler.vue'
 </script>
 
@@ -37,6 +40,19 @@ import UnitToggler from './components/handson/weather/UnitToggler.vue'
 
     <!-- 교재 212p 요구사항 2: Navigation Bar 옆에 UnitToggler 배치 -->
     <UnitToggler />
+
+    <!-- 테마 전환 — 시스템 → 라이트 → 다크 순환.
+           configStore 가 html 의 data-theme 를 바꾸고 CSS 가 그걸 받는다. -->
+    <button
+      class="theme-btn"
+      type="button"
+      :title="`테마: ${configStore.themeLabel} (눌러서 변경)`"
+      :aria-label="`테마 ${configStore.themeLabel}, 눌러서 변경`"
+      @click="configStore.cycleTheme"
+    >
+      <span aria-hidden="true">{{ configStore.themeIcon }}</span>
+      <span class="theme-txt">{{ configStore.themeLabel }}</span>
+    </button>
   </header>
 
   <!-- 주소창 변경에 따라 실제 화면이 갈아 끼워지는 가변형 주입 구역 -->
@@ -44,6 +60,31 @@ import UnitToggler from './components/handson/weather/UnitToggler.vue'
 </template>
 
 <style scoped>
+.theme-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  margin-left: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.76rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.theme-btn:hover {
+  border-color: var(--color-border-hover);
+}
+/* 좁은 화면에서는 아이콘만 남긴다 */
+@media (max-width: 620px) {
+  .theme-txt {
+    display: none;
+  }
+}
+
 .site-head {
   display: flex;
   align-items: center;

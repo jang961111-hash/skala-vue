@@ -33,6 +33,70 @@ export const useConfigStore = defineStore('config', () => {
   // [요구사항 4] 본인 추가 state — 카드 조밀 보기
   const compact = ref(false)
 
+  /* ================================================================
+     테마 (라이트 / 다크 / 시스템)
+     ================================================================
+     ▸ 왜 스토어에 두나
+       테마는 헤더의 버튼에서 바꾸는데, 색을 쓰는 건 앱 전체다.
+       단위(℃/℉) 를 스토어로 뺀 것과 정확히 같은 이유다 — props 로
+       내려보낼 수 없는 값이다.
+
+     ▸ 세 가지 상태로 둔 이유
+       'system' 이 기본이다. 사용자가 OS 에서 이미 정해 둔 취향을
+       무시하고 강제로 밝게 켜는 앱이 불편했던 기억이 있어서,
+       **명시적으로 고르기 전까지는 OS 를 따라간다.**
+
+     ▸ localStorage
+       새로고침해도 유지돼야 설정으로서 의미가 있다.
+       읽기가 실패할 수 있어(사파리 프라이빗 모드 등) try/catch 로 감싼다.
+       실패하면 그냥 기본값으로 간다 — 테마 때문에 앱이 죽으면 안 된다.
+     ================================================================ */
+  const THEME_KEY = 'skala-vue-theme'
+  const THEMES = ['system', 'light', 'dark']
+
+  const readStoredTheme = () => {
+    try {
+      const saved = localStorage.getItem(THEME_KEY)
+      return THEMES.includes(saved) ? saved : 'system'
+    } catch {
+      return 'system'
+    }
+  }
+
+  const theme = ref(readStoredTheme())
+
+  const themeLabel = computed(
+    () => ({ system: '시스템', light: '라이트', dark: '다크' })[theme.value],
+  )
+
+  const themeIcon = computed(() => ({ system: '🖥️', light: '☀️', dark: '🌙' })[theme.value])
+
+  /**
+   * html 태그에 data-theme 를 붙인다.
+   * CSS 쪽에서 :root[data-theme='dark'] 가 미디어쿼리를 덮어쓴다.
+   * 'system' 일 때는 속성을 아예 지워서 미디어쿼리에 다시 맡긴다.
+   */
+  const applyTheme = () => {
+    const el = document.documentElement
+    if (theme.value === 'system') el.removeAttribute('data-theme')
+    else el.setAttribute('data-theme', theme.value)
+    try {
+      localStorage.setItem(THEME_KEY, theme.value)
+    } catch {
+      // 저장이 안 돼도 이번 세션 동안은 동작한다
+    }
+  }
+
+  /** 시스템 → 라이트 → 다크 → 시스템 순으로 돈다 */
+  const cycleTheme = () => {
+    const i = THEMES.indexOf(theme.value)
+    theme.value = THEMES[(i + 1) % THEMES.length]
+    applyTheme()
+  }
+
+  // 스토어가 처음 만들어질 때 저장된 값을 화면에 반영한다
+  applyTheme()
+
   /* ── getters ── */
   const unitSymbol = computed(() => (unit.value === 'fahrenheit' ? '℉' : '℃'))
 
@@ -71,5 +135,18 @@ export const useConfigStore = defineStore('config', () => {
   }
 
   /* ── Expose: 외부에 열어줄 것만 반환한다 ── */
-  return { unit, compact, unitSymbol, unitLabel, toggleUnit, setUnit, toggleCompact, convertTemp }
+  return {
+    unit,
+    compact,
+    unitSymbol,
+    unitLabel,
+    toggleUnit,
+    setUnit,
+    toggleCompact,
+    convertTemp,
+    theme,
+    themeLabel,
+    themeIcon,
+    cycleTheme,
+  }
 })

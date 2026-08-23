@@ -28,6 +28,7 @@
 <script setup>
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
 import LightTimeline from '../components/LightTimeline.vue'
+import { toLocalHM } from '../composables/usePhotoTime.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import { useWeatherStore } from '../stores/weatherStore.js'
@@ -131,6 +132,43 @@ watch(
    ================================================================ */
 const timelineCities = computed(() => weatherList.value.filter((c) => c.sunrise && c.sunset))
 
+/* ================================================================
+   지금 기준으로 가장 가까운 촬영 시간 하나
+   ================================================================
+   6개 도시의 오늘 골든아워를 모아 아직 지나지 않은 것 중 제일 빠른 것을
+   고른다. 점수는 내지 않는다 — 그건 예보·대기질이 필요해서 도시마다
+   API 를 더 불러야 하고, 첫 화면을 무겁게 만든다.
+
+   해가 이미 다 진 뒤라면(밤) 내일 아침 골든아워를 가리킨다.
+   "오늘은 끝났습니다" 로 끝내면 그 다음에 뭘 해야 할지 알려주지 못한다.
+   ================================================================ */
+const nextShot = computed(() => {
+  const now = Math.floor(Date.now() / 1000)
+  const candidates = []
+  for (const c of timelineCities.value) {
+    const tz = c.timezone ?? 0
+    candidates.push(
+      { at: c.sunrise, name: '아침 골든아워', cityName: c.name, tz, span: 3600, dir: 1 },
+      { at: c.sunset - 3600, name: '저녁 골든아워', cityName: c.name, tz, span: 3600, dir: 1 },
+    )
+  }
+  const upcoming = candidates.filter((x) => x.at + x.span > now).sort((a, b) => a.at - b.at)
+  // 오늘 게 다 지났으면 내일 아침(=오늘 일출 + 24시간)을 가리킨다
+  const pick =
+    upcoming[0] ??
+    candidates
+      .filter((x) => x.name === '아침 골든아워')
+      .map((x) => ({ ...x, at: x.at + 86400 }))
+      .sort((a, b) => a.at - b.at)[0]
+  if (!pick) return null
+  return {
+    cityName: pick.cityName,
+    name: pick.name,
+    from: toLocalHM(pick.at, pick.tz),
+    to: toLocalHM(pick.at + pick.span, pick.tz),
+  }
+})
+
 /* [교재 102p] 검색창에서 Enter → 첫 결과로 바로 이동.
    결과가 없으면 아무 일도 일어나지 않게 둔다. 없는 곳으로 보내면
    사용자가 뭘 잘못했는지 모른 채 화면만 바뀐다. */
@@ -174,11 +212,35 @@ const handleClickDetail = (cityName) => {
 
 <template>
   <div class="weather-home">
-    <header class="page-head">
-      <h2>📷 오늘 어디서 찍을까</h2>
-      <p class="sub">
-        날씨를 나열하는 대신 판단을 줍니다. 도시를 고르면 해가 뜨고 지는 시각 · 구름량 · 미세먼지를
-        합쳐 촬영하기 좋은 시간을 점수로 매깁니다.
+    <!-- ================================================================
+         히어로 — 이 앱이 무엇을 하는지 한 화면에서 끝낸다
+         ================================================================
+         처음에는 열자마자 타임라인 6개가 바로 나왔다. 만든 사람은 알지만
+         처음 보는 사람은 저 막대가 뭔지 모른다.
+
+         새 장식을 얹는 대신 **이미 있는 것으로** 설명하기로 했다.
+           · 오늘 가장 가까운 촬영 시간을 큰 숫자로
+           · 그 아래 한 문장으로 무엇을 계산하는지
+         배경은 하루의 빛 색(dawn → golden)을 아주 옅게 깐 것뿐이다.
+         ================================================================ -->
+    <header class="hero">
+      <p class="hero-eyebrow">해 · 구름 · 미세먼지를 함께 봅니다</p>
+      <h2 class="hero-title">오늘 어디서 찍을까</h2>
+
+      <p v-if="nextShot" class="hero-lead">
+        가장 가까운 촬영 시간은
+        <b>{{ nextShot.cityName }} {{ nextShot.name }}</b>
+        <time class="hero-time">{{ nextShot.from }}–{{ nextShot.to }}</time>
+        입니다.
+      </p>
+      <p v-else class="hero-lead">
+        도시를 고르면 해가 뜨고 지는 시각 · 구름량 · 미세먼지를 합쳐 촬영하기 좋은 시간을 점수로
+        매깁니다.
+      </p>
+
+      <p class="hero-sub">
+        아래 막대는 하루의 빛입니다. 짙은 남색이 블루아워, 노란 구간이 골든아워, 세로선이
+        지금입니다.
       </p>
     </header>
 
@@ -287,6 +349,53 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+/* 히어로 — 배경은 하루의 빛 색을 아주 옅게 깐 것뿐이다.
+   장식을 더 얹지 않고 타이포와 여백으로만 화면을 잡는다. */
+.hero {
+  padding: clamp(28px, 6vw, 56px) clamp(18px, 4vw, 36px) clamp(24px, 4vw, 40px);
+  margin-bottom: var(--gap-3);
+  border-radius: var(--radius);
+  background:
+    radial-gradient(120% 90% at 15% 0%, rgba(233, 161, 59, 0.14), transparent 60%),
+    radial-gradient(110% 80% at 90% 100%, rgba(30, 42, 68, 0.12), transparent 62%);
+}
+.hero-eyebrow {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  color: var(--ink-mute);
+  margin-bottom: 8px;
+}
+.hero-title {
+  font-size: clamp(1.9rem, 5vw, var(--step-4));
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.hero-lead {
+  margin-top: 14px;
+  font-size: clamp(0.95rem, 2.2vw, var(--step-1));
+  max-width: 44ch;
+}
+.hero-lead b {
+  font-weight: 650;
+  color: var(--color-heading);
+}
+.hero-time {
+  display: inline-block;
+  margin: 0 3px;
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: rgba(233, 161, 59, 0.2);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.hero-sub {
+  margin-top: 18px;
+  font-size: 0.78rem;
+  color: var(--ink-mute);
+  max-width: 52ch;
+}
+
 .sky-filter {
   display: flex;
   align-items: center;

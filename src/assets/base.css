@@ -103,6 +103,76 @@
   }
 }
 
+/* ================================================================
+   수동 테마 전환 (헤더의 버튼)
+   ================================================================
+   위의 미디어쿼리는 OS 설정을 따라간다. 사용자가 버튼으로 직접
+   고르면 그걸 우선해야 하므로, html 태그의 data-theme 속성으로
+   미디어쿼리를 **양방향으로** 덮어쓴다.
+
+     data-theme 없음 → 미디어쿼리(OS 설정)
+     data-theme="light" → 다크 OS 에서도 밝게
+     data-theme="dark"  → 라이트 OS 에서도 어둡게
+
+   'light' 쪽도 반드시 있어야 한다. 다크 OS 를 쓰는 사람이 라이트를
+   골랐을 때 미디어쿼리가 이기면 버튼이 한 방향으로만 동작한다.
+   ================================================================ */
+:root[data-theme='dark'] {
+  --paper: #101218;
+  --paper-soft: #171a22;
+  --paper-mute: #1e222c;
+  --ink: #f2efe9;
+  --ink-soft: #cdd2da;
+  --ink-mute: rgba(242, 239, 233, 0.6);
+
+  --golden: #f2b455;
+  --golden-soft: #7a5a2a;
+  --dawn: #8fa4cc;
+  --dawn-soft: #2a3350;
+  --dusk: #a98bbd;
+  --haze: #6b7684;
+
+  --good: #4bbfa5;
+  --warn: #e0a45a;
+  --bad: #e07a63;
+
+  --color-background: var(--paper);
+  --color-background-soft: var(--paper-soft);
+  --color-background-mute: var(--paper-mute);
+  --color-border: rgba(242, 239, 233, 0.13);
+  --color-border-hover: rgba(242, 239, 233, 0.26);
+  --color-heading: var(--ink);
+  --color-text: var(--ink-soft);
+}
+
+:root[data-theme='light'] {
+  --paper: #faf8f5;
+  --paper-soft: #f3efe9;
+  --paper-mute: #ebe6de;
+  --ink: #14161c;
+  --ink-soft: #3d434f;
+  --ink-mute: rgba(20, 22, 28, 0.58);
+
+  --golden: #e9a13b;
+  --golden-soft: #f6cf8e;
+  --dawn: #1e2a44;
+  --dawn-soft: #33456b;
+  --dusk: #6b4e7d;
+  --haze: #a8b5c4;
+
+  --good: #0f7f6c;
+  --warn: #b8760f;
+  --bad: #b4442e;
+
+  --color-background: var(--paper);
+  --color-background-soft: var(--paper-soft);
+  --color-background-mute: var(--paper-mute);
+  --color-border: rgba(20, 22, 28, 0.1);
+  --color-border-hover: rgba(20, 22, 28, 0.22);
+  --color-heading: var(--ink);
+  --color-text: var(--ink-soft);
+}
+
 *,
 *::before,
 *::after {
@@ -134,6 +204,25 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 폼 요소 색을 테마에 맞춘다.
+   accent-color 를 안 주면 체크박스·라디오가 브라우저 기본 파랑으로 남는데,
+   다크 배경에서 흰 네모만 동동 떠 보여서 눌렀는지 알기 어려웠다.
+   input[type=range] 나 progress 에도 같이 적용된다. */
+input,
+select,
+button,
+textarea {
+  accent-color: var(--golden);
+}
+
+/* 폼 요소는 폰트를 물려받지 않는다. 명시해 주지 않으면 혼자 다른 글꼴이 된다. */
+select,
+button,
+input,
+textarea {
+  font-family: inherit;
 }
 
 /* 숫자가 세로로 줄 맞게. 시각(18:13)과 점수가 흔들리면 표로 안 읽힌다. */
