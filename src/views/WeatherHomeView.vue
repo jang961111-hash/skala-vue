@@ -34,6 +34,7 @@ import PhotoPlanner from '../components/PhotoPlanner.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import { useWeatherStore } from '../stores/weatherStore.js'
+import { useConfigStore } from '../stores/configStore.js'
 import BaseDashboardCard from '../components/handson/weather/BaseDashboardCard.vue'
 import SearchBar from '../components/handson/weather/SearchBar.vue'
 import WeatherCard from '../components/handson/weather/WeatherCard.vue'
@@ -44,6 +45,7 @@ const router = useRouter()
 
 // [요구사항 4] 즐겨찾기 스토어 — 목록/상세/페이지 이동을 넘어 상태가 유지된다
 const favoriteStore = useFavoriteStore()
+const configStore = useConfigStore()
 
 // 교재 230p 요구사항 1 — 날씨 데이터를 스토어에서 가져온다.
 // API 키가 있으면 실시간, 없으면 Mock 으로 자동 폴백된다.
@@ -156,6 +158,18 @@ const useMyLocation = async () => {
 }
 
 const myPlace = computed(() => weatherStore.myPlace)
+
+/* 단위 변환은 configStore 가 한다. 다른 화면과 같은 함수를 써야
+   ℃/℉ 토글이 여기서도 같이 따라온다.
+   ※ 처음에 템플릿에서 configStore 를 직접 참조했는데, 이 파일에는
+      configStore 가 없었다. 위치를 허용해 이 블록이 렌더링되는 순간
+      undefined 를 읽어 앱 전체가 흰 화면이 됐다.
+      ESLint 는 template 안의 미정의 변수를 잡지 못한다. */
+const myTemp = computed(() => {
+  const c = myPlace.value
+  if (!c) return ''
+  return `${configStore.convertTemp(c.temp)}${configStore.unitSymbol}`
+})
 const myForecast = computed(() =>
   myPlace.value ? (weatherStore.forecastMap[myPlace.value.id] ?? []) : [],
 )
@@ -305,7 +319,7 @@ const handleClickDetail = (cityName) => {
       <template v-if="myPlace">
         <div class="myloc-meta">
           <b>{{ myPlace.name }}</b>
-          <span>{{ myPlace.temp }}{{ configStore.unitSymbol === '℉' ? '' : '℃' }}</span>
+          <span class="num">{{ myTemp }}</span>
           <span>{{ myPlace.status }}</span>
           <span v-if="myPlace.accuracy" class="acc">오차 약 {{ myPlace.accuracy }}m</span>
           <button class="myloc-clear" type="button" @click="weatherStore.clearMyPlace">해제</button>
