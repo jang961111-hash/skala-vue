@@ -27,6 +27,7 @@
 -->
 <script setup>
 import { ref, computed, watch, watchEffect, onMounted } from 'vue'
+import { toLocalHM } from '../composables/usePhotoTime.js'
 import { useRoute, useRouter } from 'vue-router'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import { useWeatherStore } from '../stores/weatherStore.js'
@@ -95,6 +96,28 @@ watch(
 )
 
 /* ── 교재 189p: 마운트 시 주소창의 ?search= 값으로 상태 복원 ── */
+/* ================================================================
+   오늘의 촬영 시간 — 추가 API 호출 없이 만든다
+   ================================================================
+   일출·일몰은 현재 날씨 응답(/weather)에 이미 들어 있다.
+   6개 도시를 부를 때 같이 받아 왔으므로 계산만 하면 된다.
+
+   예보나 대기질까지 보려면 도시마다 API 를 더 불러야 해서
+   여기서는 시각만 보여주고 점수는 상세 페이지에서 낸다.
+   첫 화면은 가볍게 유지하는 쪽을 택했다.
+   ================================================================ */
+const goldenHours = computed(() =>
+  weatherList.value
+    .filter((c) => c.sunset)
+    .map((c) => ({
+      id: c.id,
+      name: c.name,
+      // 저녁 골든아워 = 해 지기 전 1시간
+      from: toLocalHM(c.sunset - 3600, c.timezone ?? 0),
+      to: toLocalHM(c.sunset, c.timezone ?? 0),
+    })),
+)
+
 onMounted(() => {
   // 교재 153p — Mounting 이 API 호출 최적 타이밍
   weatherStore.loadAllWeather()
@@ -130,9 +153,25 @@ const handleClickDetail = (cityName) => {
 <template>
   <div class="weather-home">
     <header class="page-head">
-      <h2>🌤️ 전국 날씨 대시보드</h2>
-      <p class="sub">SKALA Vue.js 과제 — 교재 196p Hands on: Weather Router</p>
+      <h2>📷 오늘 어디서 찍을까</h2>
+      <p class="sub">
+        날씨를 나열하는 대신 판단을 줍니다. 도시를 고르면 해가 뜨고 지는 시각 · 구름량 · 미세먼지를
+        합쳐 촬영하기 좋은 시간을 점수로 매깁니다.
+      </p>
     </header>
+
+    <!-- 오늘의 저녁 골든아워 — 이미 받아온 일몰 시각만 쓰므로 추가 호출이 없다 -->
+    <section v-if="goldenHours.length" class="golden-strip">
+      <span class="gs-label">🌇 오늘 저녁 골든아워</span>
+      <ul>
+        <li v-for="g in goldenHours" :key="g.id">
+          <RouterLink :to="`/weather/${g.id}`">
+            <b>{{ g.name }}</b>
+            <span>{{ g.from }}–{{ g.to }}</span>
+          </RouterLink>
+        </li>
+      </ul>
+    </section>
 
     <!-- 교재 230p — 데이터 출처/상태 표시 -->
     <div
@@ -219,6 +258,46 @@ const handleClickDetail = (cityName) => {
 </template>
 
 <style scoped>
+.golden-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 11px 15px;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(6, 182, 212, 0.1));
+}
+.gs-label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.golden-strip ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.golden-strip a {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--color-background);
+  border: 1px solid var(--color-border);
+  font-size: 0.76rem;
+  text-decoration: none;
+  color: inherit;
+}
+.golden-strip a span {
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
+
 .data-status {
   display: flex;
   align-items: center;
