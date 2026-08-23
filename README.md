@@ -1,494 +1,350 @@
 # skala-vue
 
-SKALA Full-Stack Engineering — **Frontend-framework: Vue.js** (강병호 교수님, 2026.08.18 ~ 08.21) 실습/과제 저장소입니다.
+SKALA Full-Stack Engineering — Frontend-framework: Vue.js (강병호 교수님, 2026.08.18~08.21) 과제 저장소.
 
-- **소스코드**: https://github.com/jang961111-hash/skala-vue
-- **배포**: https://jang961111-hash.github.io/skala-vue/
-- **스택**: Vue 3.5 (`<script setup>` + Composition API) · Vite 8 · Vue Router 5 · ESLint + Prettier
-- **설치돼 있으나 아직 미사용**: Pinia 3 (교재 store 단원에서 사용 예정)
+교재 `Weather` 과제를 116p → 145p → 178p → 196p → 212p → 230p → 249p 순서로
+**같은 앱을 계속 고쳐 가며** 만들었다. 단원마다 새로 만들지 않고 이전 결과물을 리팩터링했기 때문에,
+각 단계에서 무엇이 왜 바뀌었는지가 이 문서의 중심이다.
+
+- 배포: https://jang961111-hash.github.io/skala-vue/
+- 소스: https://github.com/jang961111-hash/skala-vue
 
 ## 화면
 
-| 대시보드 (`/`)                                 | 검색 필터                                      | 소개 (`/about`)                        |
-| ---------------------------------------------- | ---------------------------------------------- | -------------------------------------- |
-| ![대시보드](docs/screenshots/01-dashboard.jpg) | ![검색](docs/screenshots/02-search-filter.jpg) | ![소개](docs/screenshots/03-about.jpg) |
-
-배포본에서 직접 확인: <https://jang961111-hash.github.io/skala-vue/>
-
----
+| 대시보드                                       | 검색 · 필터                                    | 상세 · 예보                                      |
+| ---------------------------------------------- | ---------------------------------------------- | ------------------------------------------------ |
+| ![대시보드](docs/screenshots/01-dashboard.jpg) | ![검색](docs/screenshots/02-search-filter.jpg) | ![상세](docs/screenshots/04-detail-forecast.jpg) |
 
 ## 실행 방법
 
 ```bash
 npm install
-npm run dev        # 개발 서버 (http://localhost:5173)
-npm run build      # 프로덕션 빌드 → dist/
-npm run preview    # 빌드 결과를 정적 파일로 미리보기
-npm run lint       # oxlint + eslint
-npm run format     # prettier
+cp .env.example .env.local     # VITE_OPENWEATHER_API_KEY 에 본인 키 입력
+npm run dev                    # http://localhost:3000
 ```
 
----
+키가 없어도 실행된다. Mock 데이터로 화면이 뜨고 상단에 안내 배너가 나온다.
+
+```bash
+npm run lint              # ESLint + Oxlint
+npm run format            # Prettier
+npm run build             # dist/ 생성
+npm run preview           # 빌드 결과물을 정적 서버로 확인
+npm run build:staging     # .env.staging 을 읽어 빌드
+npm run build:production  # .env.production 을 읽어 빌드
+```
 
 ## 라우팅
 
-| 경로     | 화면        | 내용                            |
-| -------- | ----------- | ------------------------------- |
-| `/`      | `HomeView`  | 교재 116p 과제 — Weather Mockup |
-| `/about` | `AboutView` | 소개 페이지                     |
+| 경로               | 화면      | 비고                                      |
+| ------------------ | --------- | ----------------------------------------- |
+| `/`                | 대시보드  | 도시 카드 6개, 검색, 강수 필터            |
+| `/weather/:cityId` | 상세      | 동적 세그먼트. 3시간 단위 예보            |
+| `/stats`           | 통계      | `?sort=` 쿼리스트링으로 정렬              |
+| `/about`           | 소개      | 구현 현황, 빌드 환경 변수 표시            |
+| `/history/*`       | 학습 이력 | 116p·145p·178p 버전을 지우지 않고 남겨 둠 |
+| `/:pathMatch(.*)*` | 404       | 반드시 맨 마지막에 등록                   |
 
-`App.vue`에서 `<RouterLink>`로 주소만 바꾸고 `<RouterView />` 구역이 갈아 끼워지는 SPA 구조입니다.
-
----
-
-## 프로젝트 구조
-
-```
-src/
-├── main.js                          # createApp → Pinia/Router 등록 → mount('#app')
-├── App.vue                          # Root Component (nav + RouterView)
-├── router/index.js                  # 라우트 정의
-├── api/
-│   └── weatherApi.js                # 230p Axios 호출 계층 (인스턴스·변환)
-├── stores/
-│   ├── configStore.js               # 212p 단위 설정 (unit / unitSymbol / toggleUnit)
-│   ├── favoriteStore.js             # 212p 요구사항4 본인 추가 — 즐겨찾기
-│   ├── weatherStore.js              # 230p 날씨 데이터 + 로딩/에러 상태
-│   └── counter.js                   # 211p Code Challenge 용 (create-vue 기본)
-├── assets/
-│   ├── base.css                     # 리셋/변수
-│   └── main.css                     # 전역 스타일 (스캐폴드 2단 grid 제거)
-├── api/
-│   └── weatherApi.js                # 230p Axios 호출 계층 (인스턴스·변환)
-├── stores/counter.js                # create-vue 기본 store — 아직 미사용 (store 단원에서 교체 예정)
-├── views/
-│   ├── HomeView.vue                 # "/" → WeatherMockup 마운트
-│   ├── CompositionView.vue          # "/composition" → WeatherComposition 마운트
-│   └── AboutView.vue                # "/about" 소개 페이지
-└── components/
-    └── handson/
-        ├── WeatherMockup.vue        # 교재 116p 과제 (Vue Syntax)
-        ├── WeatherComposition.vue   # 교재 145p 과제 (Composition API)
-        └── weather/                 # 교재 178p 과제 (Vue Components)
-            ├── WeatherParent.vue        # 모든 반응형 데이터 보유
-            ├── BaseDashboardCard.vue    # 디자인 공통화 + slot
-            ├── SearchBar.vue            # props / emits
-            ├── WeatherCard.vue          # props / emits
-            └── StatSummary.vue          # 표시 전용 (본인 추가)
-docs/screenshots/                    # README용 화면 캡처
-.github/workflows/deploy.yml         # GitHub Pages 자동 배포
-```
-
-create-vue 스캐폴드가 만들어 준 예제 컴포넌트(`HelloWorld` / `TheWelcome` / `WelcomeItem` / `icons/*`)는 사용하지 않으므로 삭제했습니다.
-
-### 사용 중인 Vue API
-
-전 컴포넌트가 `<script setup>` 기반 **Composition API** 로 작성돼 있습니다.
-
-| API              | 사용처                                                                                                                                       |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ref()`          | `WeatherMockup.vue` (`weatherList` / `searchQuery` / `selectedCityInfo` / `onlyRainy`), `AboutView.vue` (`requirements` / `extras`) — 총 7곳 |
-| `<script setup>` | 모든 `.vue` 파일                                                                                                                             |
-
-`computed` / `watch` 는 교재 진도상 아직 학습 전이라 의도적으로 쓰지 않았습니다. (아래 "의도적으로 쓰지 않은 것" 참고)
+라우트는 전부 `() => import()` 지연 로딩이다. 빌드하면 화면별로 청크가 쪼개지는 것을 `dist/assets/` 에서 확인할 수 있다.
 
 ---
 
-## 단원별 Customization 기록
+# 단원별로 무엇을 만들고 무엇을 바꿨나
 
-### Day 1 (08/18) — 개발환경 구성 & Vue 기초
+## 116p — Weather Mockup (v-directive)
 
-| 항목              | 내역                                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| 프로젝트 생성     | `npm create vue@3.22.3` — Router / Pinia / ESLint / Prettier 선택, TypeScript·JSX·Vitest·E2E 미선택                                        |
-| 개인 커스터마이징 | `AboutView.vue` 의 문구를 `Welcome to SKALA-VUE project!` 로 변경                                                                          |
-| 확인한 것         | `index.html` → `main.js` → `App.vue` → 자식 컴포넌트로 이어지는 부트스트랩 체인, SFC 3단 구조(`<script setup>` / `<template>` / `<style>`) |
+한 파일 안에 전부 넣었다. `weatherList` 배열을 `v-for` 로 뿌리고, 25도 기준으로 `v-if`/`v-else` 라벨을 붙이고,
+카드 클릭 이벤트와 `.stop` 을 붙인 상세보기 버튼까지가 요구사항이었다.
 
-### Day 2 (08/19) — Vue Syntax (60p ~ 116p)
+**요구사항 3에서 `v-model` 을 쓰지 않았다.**
+검색창에 `v-model` 을 걸었더니 "ㅅ → 서 → 설" 처럼 자모가 모여 한 글자가 완성될 때까지 변수가 안 바뀌었다.
+`v-model` 안에 IME 조합 가드가 있어서 그렇다. 검색어는 치는 즉시 반응해야 해서 `:value` + `@input` 으로 바꿨다.
+`v-model` 이 결국 `:value` + `@input` 의 문법 설탕이라는 걸 이때 몸으로 알았다.
 
-**교재 116p Hands on: Weather Mockup** 을 `src/components/handson/WeatherMockup.vue` 로 구현했습니다.
+**`.stop` 이 왜 필요한지도 빼보고 알았다.**
+상세보기 버튼이 카드 안에 있어서, `.stop` 을 빼면 버튼을 누를 때 부모 카드의 `@click` 까지 같이 터졌다.
+alert 도 뜨고 선택 도시도 바뀌는 이중 발동이 눈에 보였다.
 
-#### 요구사항 대비 구현
+**이 단계에서 computed 를 일부러 안 썼다.** 평균 기온 같은 파생 데이터를 일반 함수로 계산했는데,
+computed 는 117p 이후 내용이라 Day2 범위 문법만으로 만들어 보고 싶었다. 리팩터링 지점은 주석에 표시해 뒀다.
 
-| #   | 요구사항               | 구현                                                                      | 교재      |
-| --- | ---------------------- | ------------------------------------------------------------------------- | --------- |
-| 1   | 배열 렌더링 (`v-for`)  | `weatherList` 배열을 카드로 반복 출력, `:key="city.id"` 바인딩            | 88p       |
-| 2   | 조건부 렌더링 (`v-if`) | 25도 기준 `🔥 더움` / `❄️ 선선함` 라벨 분기                               | 84p       |
-| 3   | 입력 바인딩 (IME 대응) | `:value` + `@input` 조합으로 한글 도시 검색                               | 106p      |
-| 4   | 이벤트 및 수식어       | 카드 `@click` → 상태바 표기 / `[상세보기]` `@click.stop` → `window.alert` | 96p, 102p |
-| 5   | 본인 데이터 추가       | 아래 "개인 확장" 참고                                                     | —         |
+## 145p — Weather Composition
 
-#### 요구사항 3을 `v-model` 대신 `:value` + `@input` 으로 쓴 이유
+일반 함수로 계산하던 것들을 `computed` 로 바꿨다. computed 는 의존하는 값이 안 바뀌면 재계산을 건너뛴다.
+일반 함수는 화면이 다시 그려질 때마다 매번 다시 돈다. 화면상 결과는 같은데 동작이 다르다는 게 이 단원의 핵심이었다.
 
-교재 요구사항에 명시된 방식이며, 한글 입력과 직결됩니다.
-`v-model` 은 내부에 IME 조합(composition) 가드를 갖고 있어, `ㅅ → 서 → 설` 처럼 자모가 모여 한 글자가 완성될 때까지 변수 갱신을 미룹니다.
-반면 `:value` + `@input` 은 조합 중인 자모까지 실시간으로 잡아내므로, 검색어 자동완성처럼 "치는 즉시" 반응해야 하는 UI 에 맞습니다.
+`watch` 와 `watchEffect` 는 기준을 정해서 나눠 썼다.
 
-같은 문서 안에서 "비 오는 지역만 보기" 체크박스에는 `v-model` 을 그대로 씁니다. 체크박스는 문자 입력이 아니라 boolean 토글이라 IME 조합 자체가 없기 때문입니다. 즉 `v-model` 을 피한 것이 아니라, **IME 가 개입하는 텍스트 입력에서만** 피한 것입니다.
+- 무엇이 바뀌었는지 구분해야 하거나 이전 값이 필요하면 `watch`
+- 마운트 시점에 한 번 돌아야 하거나 여러 값을 그냥 따라가면 되면 `watchEffect`
 
-#### 요구사항 4의 `.stop` 이 필요한 이유
+### 교재만 보고 짠 다음 참조 구현과 대조해 봤다
 
-`[상세보기]` 버튼이 카드(부모) 내부에 있어, `.stop` 이 없으면 버튼 클릭이 부모 카드의 `@click` 까지 연쇄로 발동합니다(이벤트 버블링).
-그 결과 alert 도 뜨고 상태바의 선택 도시도 함께 바뀌는 이중 발동이 일어납니다.
-`.stop` 은 내부적으로 `e.stopPropagation()` 을 대신 호출해 줍니다.
+이 과제는 교재만 보고 먼저 구현한 뒤, 교수님 참조 저장소를 열어 비교했다.
+뼈대와 변수명(`weatherList` / `searchQuery` / `selectedCityInfo` / `showDetail`)이 그대로 일치했다.
+교재 문장을 읽고 예상한 구조가 실제 구현과 같았다는 게 스스로 확인이 됐다.
 
-#### 개인 확장 (요구사항 5)
+차이는 하나 찾았다. 필터 함수에서 검색어가 비었을 때 곧바로 전체를 돌려주는 early return 이 있었고,
+매번 필터를 도는 내 코드보다 나아서 그것만 반영했다.
 
-교재가 준 데이터는 `id / name / temp / status` 4개 필드에 도시 3곳이었습니다. 여기에 다음을 추가했습니다.
+## 178p — Weather Component
 
-| 확장            | 내용                                                                             | 사용 문법                          |
-| --------------- | -------------------------------------------------------------------------------- | ---------------------------------- |
-| 데이터 필드     | `humidity`(습도) · `wind`(풍속) · `feelsLike`(체감온도) 추가, 도시 3곳 → **6곳** | —                                  |
-| 검색 연동       | 요구사항 3의 입력값을 실제 카드 목록 필터에 연결                                 | `v-for` + 배열 `filter`            |
-| 강수 필터       | "비 오는 지역만 보기" 토글                                                       | `v-model` 단일 체크박스 (108p)     |
-| 요약 통계       | 표시 중인 도시 수 / 평균 기온                                                    | Text Interpolation 내 표현식 (71p) |
-| 빈 상태 안내    | 조건에 맞는 도시가 없을 때 안내 문구 노출                                        | `v-if`                             |
-| 선택 하이라이트 | 선택된 카드에만 클래스 부착                                                      | `:class` 객체 구문 (79p)           |
-| 기온별 색상     | 기온에 따라 배지 색 변경                                                         | `:style` (81p)                     |
+한 파일이던 것을 5개로 쪼갰다.
 
-#### 시각 디자인
+| 컴포넌트            | 역할                            |
+| ------------------- | ------------------------------- |
+| `WeatherParent`     | 상태를 갖고 자식에게 내려 줌    |
+| `SearchBar`         | props 로 값 받고 emits 로 올림  |
+| `WeatherCard`       | 카드 하나. 단위 변환 · 즐겨찾기 |
+| `StatSummary`       | 표시 전용                       |
+| `BaseDashboardCard` | slot 으로 껍데기만 제공         |
 
-카드를 통계 위젯처럼 재구성한 **"Dashboard Tile"** 방향을 적용했습니다.
+`defineProps` / `defineEmits` 는 **선언은 camelCase, 템플릿 호출은 kebab-case** 로 갈린다.
+`searchQuery` 로 선언하고 부모에서는 `:search-query`, 이벤트도 `update-query` 로 쓴다.
+HTML 템플릿이 대소문자를 구분하지 않기 때문이다.
 
-- 헤더: 원형 그라데이션 아이콘 배지 + 2단 타이틀
-- 검색: 아이콘 프리픽스가 붙은 pill 형태 입력창, 강수 필터는 토글 칩
-- 카드: 기온을 배경 채운 원형 배지로, 좌측에 핫/쿨 색 바를 둬 그리드를 훑을 때 한눈에 구분
-- 부가 정보(체감/습도/풍속)는 아이콘 칩 3개로 압축
-- 팔레트: 인디고 `#6366f1` → 시안 `#06b6d4` 축, 핫 `#f97316` / 쿨 `#0ea5e9`
-- `var(--color-*)` 를 사용해 라이트/다크 모드 모두 대응
+slot 중에 **Scoped Slot 이 방향이 반대**라는 게 제일 헷갈렸다.
+props 는 부모 → 자식인데, scoped slot 은 자식이 가진 값을 부모가 받아서 모양을 정한다.
 
-#### 의도적으로 쓰지 않은 것
+## 196p — Weather Router
 
-`getFilteredList()` / `getAverageTemp()` 같은 파생 데이터는 원래 `computed()` 로 만드는 것이 정석입니다.
-`computed` 는 의존 값이 바뀔 때만 재계산하고 결과를 캐시하지만, 일반 함수는 렌더링마다 매번 재실행되어 비효율적입니다.
-다만 `computed` 는 교재 117p 이후(Composition API) 내용이라, **Day 2 범위(60p~116p) 문법만으로 구현**하기 위해 일반 함수로 대체했습니다.
-해당 단원 학습 후 리팩터링할 지점으로 코드 주석에 표시해 두었습니다.
-
-### Day 3 (08/20) — Composition API (117p ~ 145p)
-
-**교재 145p Hands on: Weather Composition** 을 `src/components/handson/WeatherComposition.vue` 로 구현했습니다.
-116p 버전을 지우지 않고 `/composition` 라우트에 나란히 두어, 같은 화면이 어떻게 달라지는지 비교할 수 있게 했습니다.
-
-#### 116p 버전과 무엇이 달라졌나
-
-| 116p (`/`)                    | 145p (`/composition`)                      | 교재       |
-| ----------------------------- | ------------------------------------------ | ---------- |
-| `getFilteredList()` 일반 함수 | `filteredWeatherList` **computed**         | 127p       |
-| `getAverageTemp()` 일반 함수  | `averageTemp` **computed**                 | 127p       |
-| (없음)                        | `watch` 로 `selectedCityInfo` 감시         | 130p       |
-| (없음)                        | `watchEffect` 로 `searchQuery` 추적        | 141p       |
-| 빈 상태 2분기                 | 검색 상태 **3분기** (빈검색어/일치/불일치) | 요구사항 4 |
-
-일반 함수는 화면이 다시 그려질 때마다 매번 재실행되지만, `computed` 는 의존하는 반응형 데이터가 바뀔 때만 재계산하고 나머지는 캐싱된 값을 돌려줍니다.
-
-#### `watch` 와 `watchEffect` 를 나눠 쓴 기준
-
-요구사항이 둘 다 쓰라고 명시했는데, 용도가 실제로 갈립니다.
-
-- **`watch(selectedCityInfo, (newVal, oldVal) => ...)`** — 감시 대상을 명시하고 **이전 값**을 받습니다. 그래서 `"서울" → "제주"` 처럼 어디에서 어디로 옮겨갔는지를 로그로 남길 수 있습니다.
-- **`watchEffect(() => ...)`** — 콜백 안에서 접근한 반응형 데이터를 자동 추적합니다. 이전 값은 주지 않고, **컴포넌트 생성 시 최초 1회 즉시 실행**됩니다. 검색어처럼 "지금 값이 뭔지"만 필요할 때 맞습니다.
-
-즉 **"무엇이 무엇으로 바뀌었나"가 필요하면 `watch`, "지금 값이 이렇다"만 필요하면 `watchEffect`** 입니다.
-
-#### 개인 확장 (요구사항 5)
-
-| 추가           | 종류     | 내용                                                                                       |
-| -------------- | -------- | ------------------------------------------------------------------------------------------ |
-| `averageTemp`  | computed | 표시 중인 도시들의 평균 기온. `filteredWeatherList` 를 의존하는 **computed 위의 computed** |
-| `searchState`  | computed | 검색 상태를 `empty` / `found` / `notfound` 로 미리 분류해 template 조건을 단순화           |
-| 결과 소멸 감지 | watch    | `filteredWeatherList.length` 를 감시해, 검색 결과가 0건이 되는 **순간**만 경고 로그        |
-
-#### 구현 후 참조 구현과 대조하며 고친 것
-
-먼저 교재만 보고 구현한 뒤 교수님 참조 구현과 비교했습니다. 골격(변수명·computed·watcher 구성)은 일치했고, 한 군데를 고쳤습니다.
+화면을 URL 로 나눴다. 이전까지 `window.alert()` 로 띄우던 상세 정보를 `/weather/:cityId` 페이지로 옮겼다.
+바뀐 건 사실상 이 한 줄이다.
 
 ```js
-// 처음 작성한 것 — 항상 filter 를 돌림
-return weatherList.value.filter((city) => { ... })
-
-// 고친 것 — 걸러낼 조건이 없으면 순회 자체를 건너뜀
-if (!query && !onlyRainy.value) return weatherList.value
-return weatherList.value.filter((city) => { ... })
+// 178p:  alert(`${city.name} 상세정보 ...`)
+// 196p:  router.push(`/weather/${city.id}`)
 ```
 
-`''.includes('')` 가 항상 `true` 라 결과는 같지만, 검색어가 비어 있는 기본 상태에서 매번 전체 배열을 훑을 이유가 없습니다. 데이터가 늘어날수록 차이가 벌어지는 지점입니다.
+동적 세그먼트와 쿼리스트링은 기준을 나눠 썼다.
+**무엇을 보여줄지가 바뀌면 경로**(`/weather/city_01`), **같은 것을 어떻게 보여줄지가 바뀌면 쿼리**(`/stats?sort=temp`).
+정렬을 경로로 만들면 라우트가 정렬 방식 수만큼 늘어난다.
 
-그 외에 의도적으로 다르게 유지한 것:
+Catch-all(`/:pathMatch(.*)*`)은 반드시 맨 마지막에 둬야 한다. 위에 두면 모든 경로를 먼저 잡아먹는다.
 
-- **`watch` 콜백에서 `oldVal` 을 받습니다.** 교재 130p 가 `(newVal, oldVal)` 을 가르쳤고, 상태 전이를 로그로 남기는 쪽이 디버깅에 유용하다고 판단했습니다.
-- **검색 상태를 3분기로 나눴습니다.** 요구사항 4가 "검색어가 비었을 때는 원본 출력"을 별도 항목으로 명시했기 때문입니다.
+**없는 도시 ID 는 Catch-all 이 못 잡는다.** `/weather/city_99` 는 라우트 패턴에는 맞으므로 정상 진입하고,
+데이터가 없어서 빈 화면이 된다. 그래서 컴포넌트 안에서 직접 찾고, 없으면 안내를 띄우도록 했다.
 
-#### 교재 178p — Weather Component (Day 3 오후)
+## 212p — Weather Store (Pinia)
 
-145p 버전을 **기능 변경 없이** 5개 컴포넌트로 분리했습니다. 화면과 동작은 동일하고 바뀐 것은 **책임의 배치**뿐입니다.
+단위(℃/℉) 토글을 헤더에 두려다 막혔다. 헤더는 `App.vue` 에 있고 실제로 온도를 쓰는 건 카드다.
+props 로 내리려면 3단계를 거쳐야 했다. 중간 컴포넌트들은 그 값을 쓰지도 않으면서 통로 역할만 한다.
+이게 props drilling 이고, 스토어로 빼면 어느 컴포넌트에서든 바로 꺼내 쓸 수 있다.
 
-| 파일                    | 역할                                     | 통신                                               |
-| ----------------------- | ---------------------------------------- | -------------------------------------------------- |
-| `WeatherParent.vue`     | 모든 반응형 데이터·computed·watcher 보유 | —                                                  |
-| `BaseDashboardCard.vue` | 검색박스·리스트박스 디자인 공통화        | `<slot>` (named + default)                         |
-| `SearchBar.vue`         | 검색 입력                                | props `search-query` / emits `update-query`        |
-| `WeatherCard.vue`       | 도시 카드 1장                            | props `city` / emits `select-card`, `click-detail` |
-| `StatSummary.vue`       | 요약 통계 (본인 추가)                    | props만, emits 없음                                |
+| 스토어          | 역할                                  |
+| --------------- | ------------------------------------- |
+| `configStore`   | 단위 상태, 변환 함수                  |
+| `favoriteStore` | 즐겨찾기 ID 목록                      |
+| `weatherStore`  | 도시 데이터, 로딩·에러 상태, API 호출 |
 
-**단방향 데이터 흐름** — 자식은 아무도 상태를 갖지 않고, 전부 부모에게 emit으로 요청합니다.
+`storeToRefs` 는 쓰지 않았다. 템플릿에서 `configStore.unitSymbol` 처럼 **스토어 객체를 통해** 접근하면
+구조분해를 한 게 아니라 반응성이 유지된다. `const { unit } = useConfigStore()` 처럼 꺼내 쓸 때만 필요하다(교재 205p).
+"무조건 붙이는 것" 이 아니라 구조분해 여부에 따라 갈린다는 게 요점이었다.
 
-```
-WeatherParent  ← 상태의 유일한 주인
-  │ props ↓        emits ↑
-  ├── SearchBar    :search-query → @update-query
-  ├── WeatherCard  :city :selected → @select-card / @click-detail
-  └── StatSummary  :count :average-temp  (표시 전용)
-```
+## 230p — Axios · 외부 API
 
-**요구사항 6 — slot 자식은 누구의 스코프인가**
+Mock 데이터를 OpenWeatherMap 실데이터로 바꿨다.
+`axios.create` 로 인스턴스를 만들어 `baseURL` 과 공통 params(키·단위·언어)를 한 곳에 모았다.
+호출부마다 키를 붙이지 않아도 되고, 나중에 서버가 바뀌어도 한 줄만 고치면 된다.
 
-```html
-<BaseDashboardCard>
-  <SearchBar :search-query="searchQuery" @update-query="handleUpdateQuery" />
-</BaseDashboardCard>
-```
+**`Promise.all` 이 아니라 `Promise.allSettled` 를 썼다.**
+도시 6곳을 동시에 부르는데, `all` 은 하나만 실패해도 전체가 reject 된다.
+서울이 실패했다고 부산까지 안 보여줄 이유가 없어서 `allSettled` 로 하고, 실패한 도시만 Mock 으로 대체했다.
 
-`SearchBar`는 시각적으로 `BaseDashboardCard` 안에 있지만, `searchQuery`와 핸들러는 `WeatherParent`의 것입니다. slot으로 전달되는 콘텐츠는 **부모 스코프에서 컴파일·평가**되기 때문입니다. 이게 아니었다면 `BaseDashboardCard`가 `searchQuery`를 받아 다시 넘기는 props drilling이 필요했을 것입니다.
+---
 
-**분리하고 나서 `.stop`이 더 중요해진 이유**
+# UI 라이브러리를 어디에 어떻게 적용했나
 
-`[상세보기]` 버튼이 카드 안에 있어, `.stop`이 없으면 `click-detail`과 `select-card` 두 이벤트가 **동시에 부모로 올라갑니다.** 분리 전에는 같은 파일 안의 문제였지만 이제는 부모가 원치 않는 이벤트를 두 개 받는 문제가 됩니다.
+교재 249p 과제. **Element Plus 2.14.4** 를 골랐다.
 
-**요구사항 7 — 본인 추가 컴포넌트**
-
-`StatSummary.vue`는 계산도 상태도 갖지 않고 받은 숫자를 보여주기만 하는 **표시 전용(Presentational) 컴포넌트**입니다. `averageTemp` 계산은 부모의 computed가 담당합니다 — 계산 책임과 표시 책임의 분리.
-
-### Day 4 (08/21) — Vue Router (179p ~ 197p)
-
-**교재 196p Hands on: Weather Router** — 178p 컴포넌트 구조를 라우터로 페이지 분리했습니다.
-
-| #   | 요구사항                  | 구현                                                             | 교재 |
-| --- | ------------------------- | ---------------------------------------------------------------- | ---- |
-| 1   | 지연 로딩 + Catch-all     | 전 라우트 `() => import(...)`, `/:pathMatch(.*)*` 마지막 배치    | 195p |
-| 2   | App.vue 네비 + RouterView | `<RouterLink>` 3개 + `<RouterView />`                            | 182p |
-| 3   | WeatherHomeView           | WeatherParent 대체. **`window.alert` → `router.push`**           | 191p |
-| 4   | WeatherDetailView         | `/weather/:cityId` 동적 세그먼트, `onMounted`에서 Mock Data 조회 | 187p |
-| 5   | WeatherAboutView          | 라우팅 표 + 학습 이력 + 돌아가기                                 | —    |
-| 6   | 본인 추가 View            | `WeatherStatsView` — 쿼리스트링 정렬                             | 189p |
-
-#### 178p 대비 달라진 단 하나
+`main.js` 에서 전역 등록했기 때문에 각 컴포넌트에서 import 없이 `<el-*>` 를 바로 쓴다.
+교재 150p 에서 배운 전역 등록이 실제로 쓰인 곳이다.
 
 ```js
-// 178p
-window.alert(`${cityName}의 현재 날씨는 [${status}] 상태입니다.`)
-
-// 196p — Programmatic Navigation
-router.push(`/weather/${city.id}`)
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+app.use(ElementPlus)
 ```
 
-자식(`WeatherCard`)은 여전히 `click-detail`을 emit할 뿐입니다. **"그걸 받아서 무엇을 하는가"만 부모가 바꿨습니다.** 컴포넌트를 분리해 둔 효과가 여기서 나옵니다.
+## 적용 위치
 
-#### 동적 세그먼트 vs 쿼리스트링 — 왜 나눠 쓰는가
+| 위치                | 컴포넌트                                                                                                          | 무엇 때문에                    |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| `WeatherDetailView` | `el-date-picker`                                                                                                  | **예보 날짜 선택** (아래 설명) |
+| 연습 저장소         | `el-card` `el-input` `el-switch` `el-button` `el-input-number` `el-rate` `el-progress` `ElMessage` `ElMessageBox` | 교재 246~248p Code Challenge   |
 
-|             | 동적 세그먼트 `/weather/:cityId` | 쿼리스트링 `?sort=temp`       |
-| ----------- | -------------------------------- | ----------------------------- |
-| 의미        | 그 리소스가 **무엇인지**         | 같은 리소스를 **어떻게 볼지** |
-| 라우터 선언 | 필요                             | **불필요** (자유 확장)        |
-| 이 앱에서   | 도시 6개든 600개든 라우트 한 줄  | 정렬 상태를 URL로 공유 가능   |
+## `el-date-picker` 를 고른 이유 — 예뻐서가 아니라 기능이 없어서
 
-#### Mock Data를 별도 모듈로 뺀 이유
+문제가 먼저 있었다. `/forecast` API 는 5일치를 3시간 간격으로 **40건** 준다.
+그런데 내 화면은 앞 **8건**(약 하루치)만 쓰고 있었다. **나머지 4일치를 그냥 버리고 있었다.**
 
-목록(`WeatherHomeView`)과 상세(`WeatherDetailView`)가 같은 데이터를 봐야 하는데, 라우터로 페이지가 갈리면 **서로 부모-자식이 아니게 되어 props로 넘길 수 없습니다.** 그래서 `src/data/weatherMockData.js`로 분리해 양쪽에서 import합니다.
-
-→ 이 자리를 다음 단원의 **Pinia 스토어**가 대체합니다. "왜 스토어가 필요한가"의 답이 바로 이 파일입니다.
-
-#### 없는 도시 ID는 Catch-all이 못 잡는다
-
-`/weather/city_99`는 **경로 패턴은 맞고 데이터만 없는** 경우라 Catch-all이 작동하지 않습니다. `WeatherDetailView`가 직접 `notFound` 상태로 처리합니다.
-
-#### Pinia Store (198p ~ 212p)
-
-**교재 212p Hands on: Weather Store** — 196p에서 만든 문제(라우터로 갈린 화면끼리 데이터 공유)의 답입니다.
-
-| #   | 요구사항               | 구현                                                       |
-| --- | ---------------------- | ---------------------------------------------------------- |
-| —   | `configStore.js`       | state `unit` / getters `unitSymbol` / actions `toggleUnit` |
-| 1   | `UnitToggler.vue`      | ℃/℉ 세그먼트 버튼 + 토글 버튼                              |
-| 2   | Navigation Bar 옆 배치 | `App.vue`의 `<nav>` 우측                                   |
-| 3   | 메인·상세에 단위 적용  | `WeatherCard` / `WeatherDetailView` 양쪽                   |
-| 4   | 본인 추가              | `favoriteStore.js` + configStore에 getter·action 추가      |
-
-**왜 스토어여야 하는가**
-
-단위 설정은 **네비게이션 바**에서 바꾸는데, 그 값을 써야 하는 곳은 **대시보드 카드**와 **상세 페이지**입니다. 셋은 부모-자식이 아니라 라우터로 갈린 남남입니다.
-
-| 방법           | 가능?                                          |
-| -------------- | ---------------------------------------------- |
-| props          | ❌ 부모-자식이 아니므로                        |
-| provide/inject | △ App.vue에서 내려줄 수는 있으나 추적이 어려움 |
-| **스토어**     | ⭕ 어디서든 import                             |
-
-**교재 212p 참고사항에 대한 대응**
-
-> 메인/상세에 단위 변경을 적용할 경우 유사한 코드가 중복됨 → Composable로 해결 가능 (범위 제외)
-
-변환 로직이 상태에만 의존하므로 **스토어의 action(`convertTemp`)으로 올려** Composable 없이 중복을 제거했습니다. `WeatherCard`와 `WeatherDetailView`가 이 함수 하나를 공유합니다.
-
-**Frequent Mistakes (205p)**
-
-```js
-const { count } = counterStore // ❌ 반응성 단절
-const { count } = storeToRefs(counterStore) // 🟢 보존
-const { increment } = counterStore // 🟢 함수는 무방
-```
-
-구조분해는 값을 꺼내 **복사**하므로 Proxy 연결이 끊깁니다. 연습장의 `StoreCounter.vue`에서 두 값을 나란히 두고 확인할 수 있습니다.
-
-**favoriteStore를 추가한 이유 (요구사항 4)**
-
-컴포넌트의 `ref`에 즐겨찾기를 담으면 상세 페이지로 이동하는 순간 **언마운트되면서 사라집니다.** 스토어는 컴포넌트 바깥에 살기 때문에 유지됩니다. 실제로 목록에서 별을 누르고 상세로 이동해도 그대로입니다.
-
-#### Axios · 외부 API (213p ~ 230p)
-
-**교재 230p Hands on: Weather Axios**
-
-| #   | 요구사항                   | 구현                                                 |
-| --- | -------------------------- | ---------------------------------------------------- |
-| 1   | OpenWeatherMap 실제 데이터 | `weatherStore.loadAllWeather()` — 6개 도시 동시 호출 |
-| 2   | OpenWeatherMap API 추가    | `/forecast` — 상세 페이지의 3시간 단위 예보          |
-| 3   | 기타 외부 API              | 연습장 `AxiosJson.vue` — JSONPlaceholder REST CRUD   |
-
-##### ⚠️ API 키 설정 (실행 전 필수)
-
-이 저장소는 **Public** 이라 API 키를 커밋하지 않습니다. 키 없이도 앱은 Mock 데이터로 정상 동작하며, 키를 넣으면 같은 화면이 실시간 데이터로 바뀝니다.
-
-```bash
-cp .env.example .env.local
-# .env.local 을 열어 VITE_OPENWEATHER_API_KEY=본인키 입력
-npm run dev   # 환경변수는 서버 시작 시 읽히므로 재시작 필요
-```
-
-키 발급: <https://openweathermap.org/> 가입 → My API keys
-발급 직후에는 활성화까지 **최대 2시간** 걸립니다 (그 전에는 401).
-
-`.env.local` 은 `.gitignore` 의 `*.local` 규칙으로 차단됩니다.
-
-##### 왜 `api/` 폴더로 분리했나
-
-컴포넌트마다 axios 를 직접 부르면 BASE_URL 이 흩어지고 에러 처리가 제각각이 됩니다. 호출을 한 파일에 모으면 API 주소가 바뀔 때 그 한 곳만 고치면 됩니다.
-
-`toCityShape()` 로 응답을 앱의 도시 객체 형태로 변환하는 층도 두었습니다. 백엔드 응답 구조와 화면이 쓰는 구조를 분리해, API 가 바뀌어도 화면을 고치지 않아도 됩니다.
-
-##### `Promise.allSettled` 를 쓴 이유
-
-도시 6개를 동시에 호출하는데, `Promise.all` 은 **하나만 실패해도 전부 reject** 됩니다. `allSettled` 는 실패한 도시만 Mock 으로 남기고 나머지는 살립니다.
-
-##### 실측 검증 결과
-
-OpenWeatherMap 키를 실제로 적용해 확인했습니다.
+날짜를 고를 수 있으면 40건을 전부 쓸 수 있다.
 
 ```
-GET /weather  6개 도시 전부 200
-  서울 27℃ 온흐림 / 수원 28℃ 실 비 / 부산 34℃ 실 비
-  강릉 28℃ 온흐림 / 제주 35℃ 온흐림 / 대전 26℃ 온흐림
-
-GET /forecast 40건 수신 (앱은 앞 8건 표시)
-  08-21 06:00  35℃  강수확률 1%  온흐림
-  08-21 09:00  33℃  강수확률 4%  큰구름
+선택 전    →  "3시간 단위 예보 (기본 8건)"   08-21 09:00 부터
+8/23 선택  →  "2026-08-23 예보"  8건        08-23 00:00 ~ 21:00
 ```
 
-화면 상단에 `실시간 데이터 · 오후 2:36:33` 이 표시되고, 날씨 설명이 API가 준 한글(`온흐림`, `실 비`)로 바뀝니다. `lang=kr` 파라미터의 효과입니다.
+달력을 직접 만들려면 월 이동, 요일 배치, 선택 상태, 비활성 날짜 처리를 전부 짜야 한다.
+`el-date-picker` 는 props 몇 개로 끝난다. 라이브러리를 쓰는 이유가 이거라는 걸 이 지점에서 이해했다.
 
-##### 401 폴백이 실제로 작동한 사례
+## `disabledDate` — 못 고르게 막는 쪽을 택했다
 
-OpenWeatherMap은 키 발급 후 **최대 2시간** 동안 401을 반환합니다. 발급 직후 실행했을 때 실제로 이 상황을 겪었습니다.
-
-```
-6개 도시 전부 401 (Invalid API key)
-  → 앱은 죽지 않음. 카드 6개 정상 렌더링
-  → 상태바: "호출 실패 — Mock 데이터 사용 중"
-  → 콘솔: [weatherStore] 6개 도시 조회 실패 (해당 도시는 Mock 유지)
-약 10분 뒤 활성화 → 200 OK → 새로고침 버튼만 눌러 실시간 전환
-```
-
-**`Promise.allSettled`를 쓴 이유가 여기서 증명됐습니다.** `Promise.all`이었다면 첫 실패에서 전체가 reject되어 `catch`로 떨어지고, 화면에 카드가 하나도 안 남았을 것입니다.
-
-##### Axios vs fetch (교재 222p)
-
-|           | fetch                    | Axios                        |
-| --------- | ------------------------ | ---------------------------- |
-| JSON 파싱 | `.json()` 한 번 더       | `response.data` 가 이미 객체 |
-| 4xx/5xx   | 에러로 안 봄 (직접 체크) | 자동 reject → `catch`        |
-
-#### UI Library — Element Plus (231p ~ 249p)
-
-**교재 249p Hands on: Weather UI Library** — `element-plus@2.14.4`
-
-##### 어디에 어떻게 적용했나
-
-| 위치                     | 컴포넌트                                                                                                                          | 왜 썼나                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `WeatherDetailView`      | `el-date-picker`                                                                                                                  | **예보 날짜 선택** — 아래 설명 |
-| 연습장 `ElementPlus.vue` | `el-card` / `el-input` / `el-switch` / `el-button` / `el-input-number` / `el-rate` / `el-progress` / `ElMessage` / `ElMessageBox` | 교재 246~248p Code Challenge   |
-
-전역 등록(`main.js`의 `app.use(ElementPlus)`)이라 각 컴포넌트에서 import 없이 `<el-*>`를 바로 씁니다. 교재 150p에서 배운 **전역 등록**의 실제 사례입니다.
-
-##### `el-date-picker`를 고른 이유 — 예뻐서가 아니라 기능이 필요해서
-
-> 교수님: "웹 라이브러리를 예쁘다고 쓰는 게 아니에요. 그 안에 쓰이는 **기능들**이 있어요. 현재 날짜가 아니라 앞으로 특정한 날에 날씨를 보고 싶다, 그러면 그 날짜 선택하는 컨트롤을 쓰면 되는 거지."
-
-**문제**: `/forecast` API는 5일치를 3시간 간격으로 **40건** 줍니다. 그런데 화면은 앞 8건(약 하루치)만 보여주고 있었습니다. **나머지 4일치가 그냥 버려지고 있었습니다.**
-
-**해결**: 날짜를 고를 수 있으면 40건을 전부 쓸 수 있습니다.
-
-```
-선택 전  →  "3시간 단위 예보 (기본 8건)"     08-21 09:00 ~
-8/23 선택 →  "2026-08-23 예보"  8건          08-23 00:00 ~ 21:00
-```
-
-**직접 만들었다면**: 월 이동, 요일 배치, 선택 상태, 비활성 날짜 처리를 전부 짜야 합니다. `el-date-picker`는 props 몇 개로 끝납니다.
-
-##### `disabledDate` — 못 고르게 막는 쪽이 낫다
-
-예보가 있는 날짜만 선택 가능하게 했습니다.
+예보가 있는 날짜만 선택되게 했다.
 
 ```js
 const disabledDate = (date) => !weatherStore.availableDates(city.value.id).includes(포맷된날짜)
 ```
 
-"고를 수는 있는데 결과가 없다"보다 **"애초에 못 고른다"**가 사용자에게 낫습니다.
+"고를 수는 있는데 결과가 없다" 보다 **"애초에 못 고른다"** 가 쓰는 사람 입장에서 낫다고 판단했다.
 
-#### Navigation Guard (193~194p)
-
-요구사항엔 없지만 단원에서 배운 내용이라 `beforeEach`/`afterEach` 로깅 가드를 걸어 두었습니다. 개발자도구 콘솔에서 라우팅 흐름을 볼 수 있습니다.
-
----
-
-## 앞으로의 계획 (교재 기준)
-
-남은 과제는 모두 **이 Weather 앱을 이어서 고치는 것**이라, 현재 코드를 그 전제에 맞춰 두었습니다.
-
-| 교재 | 과제                    | 이 저장소에서 바뀔 것                                                                                                             |
-| ---- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 144p | Weather **Composition** | `getFilteredList()` → `computed` 인 `filteredWeatherList` 로 교체, `watch` / `watchEffect` 추가                                   |
-| 177p | Weather **Component**   | 4개 파일로 분리 — `WeatherParent` / `BaseDashboardCard`(`<slot>`) / `SearchBar`(`props`·`emits`) / `WeatherCard`(`props`·`emits`) |
-| 196p | Weather **Router**      | 동적 라우트 `/weather/:cityId`, 지연 로딩, Catch-all(`NotFoundView`), `window.alert` → `router.push`                              |
-
-이를 위해 **변수명을 교재 규격에 미리 맞춰 두었습니다** (`searchQuery`, `selectedCityInfo`, `weatherList`). 교체 지점에는 코드 주석으로 `🔜 [교재 NNNp ...]` 표시를 남겨 두었습니다.
+스토어도 같이 고쳤다. 기존에는 `slice(0, 8)` 로 8건만 저장하고 나머지를 버렸는데,
+40건을 전부 보관하고 `forecastByDate(cityId, date)` 로 걸러 쓰도록 바꿨다.
 
 ---
 
-## 배포
+# 겪은 문제와 거기서 배운 것
 
-`main` 브랜치에 push 하면 GitHub Actions(`.github/workflows/deploy.yml`)가 자동으로 빌드 후 GitHub Pages 에 배포합니다.
+## API 키가 6개 도시 전부 401 났다
 
-- GitHub Pages 는 `https://<계정>.github.io/<저장소>/` 하위 경로로 서비스되므로, 빌드 시 `VITE_BASE=/skala-vue/` 를 주어 정적 자원 경로를 맞춥니다.
-- Router 가 `createWebHistory(import.meta.env.BASE_URL)` 를 쓰므로 이 값 하나로 라우팅 경로까지 함께 따라옵니다.
-- Pages 는 정적 파일 서버라 `/about` 에서 새로고침하면 404 가 납니다. 빌드 후 `index.html` 을 `404.html` 로 복사해 Vue Router 가 경로를 이어받도록 했습니다.
+키를 넣고 새로고침했더니 6곳이 전부 401 이었다. 키 형식(32자 16진수)은 정상이었고,
+발급 직후라 활성화 대기 상태였다. 10분쯤 뒤 저절로 풀렸다.
+
+**여기서 앞의 선택이 우연히 증명됐다.** 6개가 전부 실패했는데도 화면은 안 죽었다.
+`Promise.all` 이었으면 하나만 실패해도 전체 reject 라 완전히 백지였을 것이다.
+`allSettled` 라 실패한 도시만 Mock 으로 대체되고 나머지 구조는 그대로 돌았다.
+
+에러 처리를 "혹시 몰라서" 넣는 게 아니라, 실제로 다 터졌을 때 뭐가 남는지가 설계의 차이라는 걸 봤다.
+
+## 크롬 확장 프로그램이 클릭을 먹었다
+
+카드를 눌러도 아무 반응이 없었다. Vue 코드에는 문제가 없었다.
+콘솔에 `Grabbit: Linkify enabled. Scanning page...` 가 찍혀 있었다.
+확장이 페이지 텍스트를 링크로 바꾸면서 DOM 노드를 갈아치웠고, Vue 가 붙여 둔 이벤트 리스너가 같이 떨어져 나간 것이었다.
+
+**내 코드가 아닌 곳에서도 원인이 나올 수 있다는 걸 처음 겪었다.**
+그 뒤로는 "동작이 안 된다" 싶으면 콘솔을 먼저 본다.
+
+## `RouterView` 를 내 손으로 지웠다
+
+교재 68p 를 따라 `App.vue` 를 비우는 과정에서 `<RouterView>` 까지 같이 지웠다.
+라우팅이 통째로 죽었는데, 화면이 하나는 떠 있어서 한참 몰랐다.
+
+`RouterView` 는 화면이 갈아 끼워지는 자리다. 그게 없으면 라우터 설정이 아무리 맞아도 아무것도 안 나온다.
+교재를 따라 지울 때 뭘 지우는지 보고 지워야 한다는 걸 배웠다.
+
+## Prettier 가 교재 설명과 다르게 동작했다
+
+교재 271p 미션을 그대로 돌려 봤다.
+
+```
+전:  const     myRegion   = `Suwon` ;
+후:  const myRegion = `Suwon`
+```
+
+공백은 정리됐고 세미콜론도 없어졌다(`semi: false`). 그런데 **백틱은 작은따옴표로 안 바뀌었다.**
+교재는 "백틱 기호가 어떻게 자동 변환되었는지 확인한다" 고 되어 있었다.
+
+찾아보니 `singleQuote` 는 **문자열 리터럴**(`''` vs `""`)에만 적용되고 **템플릿 리터럴은 건드리지 않는다.**
+`${}` 보간이 들어 있으면 따옴표로 바꾸는 순간 의미가 달라지기 때문에 일부러 손대지 않는 것으로 보인다.
+
+**설정값 이름만 보고 넘겼으면 몰랐을 부분이다.** 직접 돌려 보니 적용 범위가 눈에 보였다.
+
+## 빌드 해시가 실제로 바뀌는 걸 봤다
+
+교재 272p·273p 를 이어서 해봤다.
+
+```
+npm run build:staging     → WeatherAboutView-BQafS88U.js  안에 api-stage.skcc.com
+npm run build:production  → WeatherAboutView-DyFJYijX.js  안에 api-prod.skcc.com
+```
+
+같은 소스, 같은 컴포넌트인데 **파일명 해시가 다르다.**
+내용이 바뀌면 이름이 바뀌고, 이름이 바뀌니까 브라우저가 예전 캐시를 못 쓴다.
+교재 269p 의 캐시 무효화 설명이 이 두 줄로 눈에 들어왔다.
+
+**같이 알게 된 것이 더 중요했다.**
+`import.meta.env.VITE_*` 는 실행할 때 값을 찾아오는 게 아니라 **빌드할 때 글자를 그대로 갈아 끼우는** 방식이다.
+그래서 값이 바뀌면 파일 내용이 바뀌고, 해시도 따라 바뀐 것이다.
+
+이 사실은 API 키에도 똑같이 적용된다. 아래에 따로 적었다.
+
+## ESLint 규칙을 직접 걸어 봤다
+
+교재 270p 대로 `eqeqeq: ['error', 'always']` 를 켜고 `if (userAge == 20)` 을 일부러 넣었다.
+
+```
+error  Expected '===' and instead saw '=='  eqeqeq
+```
+
+교재 253p 에 예시로 나온 메시지와 똑같이 나왔다.
+
+**위치 규칙이 있다는 걸 이때 알았다.** 커스텀 규칙은 `skipFormatting` 바로 위에 둬야 한다.
+배열은 아래에 있을수록 위를 덮어쓰기 때문에, 표준 추천 규칙보다 위에 두면 덮여서 아무 효과가 없다.
+
+`no-unused-vars` 는 `warn` 으로 낮췄다. `error` 로 두면 개발 중 임시 변수마다 걸려서 작업이 끊긴다.
+`no-console` 은 `off` 로 뒀는데, 실무 배포 단계에서는 반대로 올려서 콘솔 로그가 남은 채 배포되는 걸 막는다고 한다.
 
 ---
 
-## 코드 주석 규칙
+# API 키를 어떻게 처리했나
 
-각 컴포넌트 상단과 주요 블록에 다음을 남겨 두었습니다.
+`.env.local` 에 두고 `.gitignore` 의 `*.local` 로 막았다. Git 에 올라간 소스에는 키가 없다.
 
-- 해당 코드가 대응하는 **교재 페이지**
-- **왜 그렇게 썼는지** (문법 선택의 이유)
-- 헷갈리기 쉬운 지점의 **비교 설명**
+배포는 GitHub Actions 에서 도는데, 거기엔 `.env.local` 이 없다. 그래서 처음엔 **배포본이 Mock 으로 떴다.**
+저장소 Secret 에 키를 등록하고 워크플로에서 빌드 시점에만 주입하도록 고쳤다.
 
-복습 시 주석을 먼저 읽고 코드를 다시 타이핑하는 용도입니다.
+```yaml
+env:
+  VITE_OPENWEATHER_API_KEY: ${{ secrets.VITE_OPENWEATHER_API_KEY }}
+```
+
+## 다만 이걸로 완전히 감춰지지는 않는다
+
+위에서 확인한 대로 `import.meta.env` 는 빌드 타임 문자열 치환이다.
+**그래서 키는 배포된 JS 번들 안에 문자열로 남는다.** 실제로 빌드 결과물에서 확인했다.
+
+|                 | 키가 있나 |
+| --------------- | --------- |
+| Git 저장소 소스 | 없음      |
+| 배포된 JS 번들  | 있음      |
+
+프론트엔드 전용 앱에서는 구조적으로 막을 수 없다. 근본 해결책은 키를 백엔드에 두고
+프론트는 자기 서버만 부르게 하는 프록시 방식이다.
+
+이번 과제는 프론트만 있고 무료 등급 키라 이대로 뒀지만, **모르고 안 한 것과 알고 안 한 것은 다르다고 생각해서**
+워크플로 주석과 이 문서에 남긴다.
+
+# 배포
+
+GitHub Actions → GitHub Pages 자동 배포. `main` 에 push 하면 빌드 후 배포된다.
+
+- GitHub Pages 는 하위 경로로 서비스되므로 `base` 를 `/skala-vue/` 로 넘긴다.
+  라우터가 `createWebHistory(import.meta.env.BASE_URL)` 를 쓰기 때문에 이 값 하나로 경로가 같이 따라온다.
+- 정적 서버라 `/about` 에서 새로고침하면 404 가 난다. `index.html` 을 `404.html` 로 복사해 두면
+  Vue Router 가 경로를 이어받는다.
+
+# 프로젝트 구조
+
+```
+src/
+├── main.js                     createApp → Pinia → Router → Element Plus
+├── App.vue                     nav · 단위 토글 · RouterView
+├── api/weatherApi.js           axios 인스턴스, 호출 함수
+├── data/weatherMockData.js     키 없을 때 쓰는 Mock
+├── router/index.js             전 라우트 지연 로딩, 가드
+├── stores/                     config · favorite · weather
+├── views/                      화면 단위
+└── components/handson/         단원별 과제 컴포넌트
+```
+
+`/history/*` 아래에 116p·145p·178p 버전을 지우지 않고 남겨 뒀다.
+같은 화면이 단계마다 어떻게 달라졌는지 나중에 다시 보려고 남긴 것이다.
+
+# 코드 주석 규칙
+
+나중에 다시 볼 때를 위해 세 가지를 적었다.
+
+1. 교재 몇 페이지 내용인지
+2. 왜 그렇게 했는지 (다른 선택지를 안 쓴 이유 포함)
+3. 직접 확인한 동작
