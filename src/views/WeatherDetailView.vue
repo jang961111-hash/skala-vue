@@ -31,6 +31,7 @@ import { useWeatherStore } from '../stores/weatherStore.js'
 import { useConfigStore } from '../stores/configStore.js'
 import { useFavoriteStore } from '../stores/favoriteStore.js'
 import PhotoPlanner from '../components/PhotoPlanner.vue'
+import { bestVentilation } from '../composables/useVentilation.js'
 
 // 교재 212p 요구사항 3 — 상세 페이지에도 같은 단위 설정이 적용된다.
 // 목록 화면과 이 화면은 라우터로 갈린 남남이지만 같은 스토어를 본다.
@@ -126,14 +127,7 @@ const airTable = computed(() =>
   city.value ? (weatherStore.airForecastMap[city.value.id] ?? {}) : {},
 )
 
-const bestVent = computed(() => (city.value ? weatherStore.bestVentilation(city.value.id, 4) : []))
-
-const ventGrade = (score) => {
-  if (score >= 75) return { label: '아주 좋음', cls: 'v1' }
-  if (score >= 60) return { label: '좋음', cls: 'v2' }
-  if (score >= 45) return { label: '보통', cls: 'v3' }
-  return { label: '나쁨', cls: 'v4' }
-}
+const bestVent = computed(() => bestVentilation(allForecast.value, airTable.value, 4))
 
 const dateLabel = computed(() =>
   selectedDate.value ? `${selectedDate.value} 예보` : '3시간 단위 예보 (기본 8건)',
@@ -240,20 +234,20 @@ const displayFeels = computed(() =>
           <li v-for="v in bestVent" :key="v.utcKey" class="vent-item">
             <div class="vent-head">
               <strong class="vent-time">{{ v.time }}</strong>
-              <span class="vent-badge" :class="ventGrade(v.score).cls">
-                {{ ventGrade(v.score).label }} {{ v.score }}점
+              <span class="vent-badge" :class="v.grade.cls">
+                {{ v.grade.label }} {{ v.score }}점
               </span>
             </div>
             <div class="vent-bar"><span :style="{ width: v.score + '%' }"></span></div>
+            <!-- 근거는 컴포저블이 breakdown 으로 넘겨준다. 사진 지수와 같은 형식이다. -->
             <div class="vent-why">
-              <span>초미세 {{ v.pm25 }}㎍/㎥ (−{{ v.reason.dust }})</span>
-              <span>강수 {{ v.pop }}% (−{{ v.reason.rain }})</span>
-              <span
-                >{{ configStore.convertTemp(v.temp) }}{{ configStore.unitSymbol }} (−{{
-                  v.reason.temp
-                }})</span
-              >
-              <span>바람 {{ v.wind }}m/s (+{{ v.reason.wind }})</span>
+              <span v-for="b in v.breakdown" :key="b.key" :class="{ minus: b.value < 0 }">
+                {{ b.label }} {{ b.value > 0 ? '+' : '' }}{{ b.value }}
+              </span>
+              <span class="vent-raw">
+                초미세 {{ v.pm25 }}㎍/㎥ · 강수 {{ v.pop }}% · {{ configStore.convertTemp(v.temp)
+                }}{{ configStore.unitSymbol }} · 바람 {{ v.wind }}m/s
+              </span>
             </div>
           </li>
         </ul>
@@ -352,19 +346,23 @@ const displayFeels = computed(() =>
   padding: 2px 10px;
   border-radius: 999px;
 }
-.v1 {
+.g1 {
   background: rgba(6, 182, 212, 0.18);
   color: #0369a1;
 }
-.v2 {
+.g2 {
   background: rgba(34, 197, 94, 0.18);
   color: #15803d;
 }
-.v3 {
+.g3 {
   background: rgba(234, 179, 8, 0.2);
   color: #a16207;
 }
-.v4 {
+.g4 {
+  background: rgba(249, 115, 22, 0.18);
+  color: #c2410c;
+}
+.g5 {
   background: rgba(239, 68, 68, 0.18);
   color: #b91c1c;
 }
@@ -381,6 +379,12 @@ const displayFeels = computed(() =>
   height: 100%;
   border-radius: 999px;
   background: linear-gradient(90deg, #06b6d4, #22c55e);
+}
+.vent-why .minus {
+  color: #c2410c;
+}
+.vent-raw {
+  opacity: 0.75;
 }
 .vent-why {
   display: flex;

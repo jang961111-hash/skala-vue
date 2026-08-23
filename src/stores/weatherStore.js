@@ -57,87 +57,8 @@ export const useWeatherStore = defineStore('weather', () => {
   // 도시별 대기질 예보 조회표 { cityId: { 'YYYY-MM-DDTHH': {aqi,pm25,pm10} } }
   const airForecastMap = ref({})
 
-  /* ================================================================
-     [9단원 확장] 환기 지수 — 언제 창문을 열면 좋은가
-     ================================================================
-     ▸ 왜 만들었나
-       교수님: "라이브러리 추가되면 데이터가 추가되는 거지.
-                데이터가 추가되면 거기에 또 구현할 게 쭉 늘어날 거야."
-
-       대기질 API 를 붙이고 나니 날씨 예보(40건)와 대기질 예보(96건)가
-       같이 생겼다. 두 개를 시간으로 맞추면 새 정보가 나온다.
-       날씨만으로도, 대기질만으로도 답할 수 없는 질문이다.
-
-     ▸ 점수 계산 (100점 만점)
-       감점  미세먼지  pm25 × 2      최대 50  ← 환기의 핵심 변수
-       감점  강수확률  pop × 0.25    최대 25  ← 비 오면 창문을 못 연다
-       감점  기온차    |temp-22|×1.5 최대 25  ← 너무 춥거나 더우면 부담
-       가점  바람      min(wind×3, 10)        ← 약한 바람은 공기를 밀어낸다
-
-       가중치는 내가 정한 것이라 절대 기준이 아니다.
-       다만 "미세먼지가 제일 중요하고, 비가 오면 아예 불가"라는
-       상식적인 우선순위는 반영했다.
-
-     ▸ 시간 맞추기
-       날씨 예보는 3시간 간격, 대기질 예보는 1시간 간격이라 개수가 다르다.
-       UTC 시각 문자열(utcKey)을 키로 조회표를 만들어 맞췄다.
-       대기질 예보가 없는 시간대는 계산에서 뺀다 (추측하지 않는다).
-     ================================================================ */
-  const VENT_BASE = 100
-
-  const ventilationSlots = (cityId) => {
-    const fc = forecastMap.value[cityId] ?? []
-    const air = airForecastMap.value[cityId] ?? {}
-    if (!fc.length || !Object.keys(air).length) return []
-
-    return fc
-      .map((f) => {
-        const a = air[f.utcKey]
-        if (!a) return null // 대기질 예보가 없는 시간대는 판단하지 않는다
-
-        const dustPenalty = Math.min(a.pm25 * 2, 50)
-        const rainPenalty = Math.min(f.pop * 0.25, 25)
-        const tempPenalty = Math.min(Math.abs(f.temp - 22) * 1.5, 25)
-        const windBonus = Math.min(f.wind * 3, 10)
-
-        const score = Math.max(
-          0,
-          Math.round(VENT_BASE - dustPenalty - rainPenalty - tempPenalty + windBonus),
-        )
-        return {
-          ...f,
-          pm25: a.pm25,
-          aqi: a.aqi,
-          score,
-          // 왜 이 점수인지 화면에서 보여주기 위해 근거도 같이 넘긴다
-          reason: {
-            dust: Math.round(dustPenalty),
-            rain: Math.round(rainPenalty),
-            temp: Math.round(tempPenalty),
-            wind: Math.round(windBonus),
-          },
-        }
-      })
-      .filter(Boolean)
-  }
-
-  /**
-   * 환기하기 좋은 시간대 — **날짜별로 하나씩** 골라 준다.
-   *
-   * 처음에는 전체에서 점수 상위 3개를 뽑았는데, 셋 다 같은 날이 나왔다.
-   * 그 날이 실제로 제일 좋긴 하지만 "오늘은? 내일은?" 에 답을 못 한다.
-   * 날짜별 최고 시간대를 주는 쪽이 실제로 쓸 수 있는 정보라고 봤다.
-   */
-  const bestVentilation = (cityId, days = 4) => {
-    const byDate = {}
-    for (const slot of ventilationSlots(cityId)) {
-      const cur = byDate[slot.date]
-      if (!cur || slot.score > cur.score) byDate[slot.date] = slot
-    }
-    return Object.values(byDate)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .slice(0, days)
-  }
+  /* 환기 지수 계산은 composables/useVentilation.js 로 옮겼다.
+     스토어는 데이터를 들고 있고, 계산은 컴포저블이 한다. */
 
   /** 대기질 예보를 받아 조회표에 담는다 (환기 지수용) */
   const loadAirForecast = async (cityId) => {
@@ -281,8 +202,6 @@ export const useWeatherStore = defineStore('weather', () => {
     statusLabel,
     findCity,
     airForecastMap,
-    ventilationSlots,
-    bestVentilation,
     loadAirForecast,
     availableDates,
     forecastByDate,
