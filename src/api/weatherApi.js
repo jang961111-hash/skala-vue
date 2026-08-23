@@ -84,6 +84,31 @@ export const fetchForecast = async (cityEnglish) => {
  *   변환을 한 곳에 두면 여기만 고치면 된다. (Anti-Corruption Layer)
  */
 /**
+ * [9단원 확장] 대기질 **예보** — /air_pollution/forecast
+ *
+ * 현재 대기질(/air_pollution)과 달리 앞으로 4일치를 **1시간 간격 96건**으로 준다.
+ * 날씨 예보(/forecast, 3시간 간격 40건)와 시간을 맞춰 쓰면
+ * "언제 창문을 열면 좋은가"를 계산할 수 있다.
+ *
+ * 반환은 { 'YYYY-MM-DD HH': {aqi, pm25, pm10} } 형태의 조회표로 만든다.
+ * 배열로 두면 매번 find 를 돌아야 하는데, 40건 × 96건이면 낭비다.
+ */
+export const fetchAirForecast = async (lat, lon) => {
+  const { data } = await weatherClient.get('/air_pollution/forecast', { params: { lat, lon } })
+  const table = {}
+  for (const it of data.list ?? []) {
+    // dt 는 UTC 초. 화면이 쓰는 dt_txt 와 맞추려면 같은 기준이어야 한다.
+    const key = new Date(it.dt * 1000).toISOString().slice(0, 13) // 'YYYY-MM-DDTHH'
+    table[key] = {
+      aqi: it.main.aqi,
+      pm25: Math.round(it.components.pm2_5),
+      pm10: Math.round(it.components.pm10),
+    }
+  }
+  return table
+}
+
+/**
  * [교재 9단원 — 외부 라이브러리로 과제 확장 / 249p 요구사항 2]
  * OpenWeather **Air Pollution API** 로 대기질을 가져온다.
  *

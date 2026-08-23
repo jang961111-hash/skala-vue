@@ -75,6 +75,8 @@ onMounted(async () => {
   // [요구사항 2] OpenWeatherMap 의 다른 API 추가 — 3시간 단위 예보
   // 교수님 언급: "어느 지역을 클릭한 다음 그 지역의 3시간 단위 날씨를 가져온다든가"
   weatherStore.loadForecast(cityId)
+  // [9단원 확장] 환기 지수용 대기질 예보. 실패해도 날씨는 그대로 뜬다.
+  weatherStore.loadAirForecast(cityId)
 })
 
 /* ================================================================
@@ -112,6 +114,16 @@ const disabledDate = (date) => {
 const forecast = computed(() =>
   city.value ? weatherStore.forecastByDate(city.value.id, selectedDate.value) : [],
 )
+
+/* [9단원 확장] 환기하기 좋은 시간 상위 3개 */
+const bestVent = computed(() => (city.value ? weatherStore.bestVentilation(city.value.id, 4) : []))
+
+const ventGrade = (score) => {
+  if (score >= 75) return { label: '아주 좋음', cls: 'v1' }
+  if (score >= 60) return { label: '좋음', cls: 'v2' }
+  if (score >= 45) return { label: '보통', cls: 'v3' }
+  return { label: '나쁨', cls: 'v4' }
+}
 
 const dateLabel = computed(() =>
   selectedDate.value ? `${selectedDate.value} 예보` : '3시간 단위 예보 (기본 8건)',
@@ -200,6 +212,40 @@ const displayFeels = computed(() =>
       </section>
 
       <!-- [요구사항 2] 3시간 단위 예보 (OpenWeatherMap /forecast API) -->
+      <!-- ================================================================
+           [9단원 확장] 환기 지수 — 날씨 예보 × 대기질 예보
+           두 API 를 시간으로 맞춰야만 나오는 정보다.
+           대기질 예보가 없으면 이 섹션 자체가 안 나온다 (추측하지 않는다).
+           ================================================================ -->
+      <section v-if="bestVent.length" class="vent">
+        <h3>🪟 창문 열기 좋은 시간</h3>
+        <p class="vent-sub">
+          날씨 예보와 대기질 예보를 시간대별로 맞춰 계산한 뒤, 날짜마다 가장 좋은 시간을 하나씩
+          골랐습니다. 미세먼지·강수확률·기온을 감점하고 바람을 가점합니다.
+        </p>
+        <ul class="vent-list">
+          <li v-for="v in bestVent" :key="v.utcKey" class="vent-item">
+            <div class="vent-head">
+              <strong class="vent-time">{{ v.time }}</strong>
+              <span class="vent-badge" :class="ventGrade(v.score).cls">
+                {{ ventGrade(v.score).label }} {{ v.score }}점
+              </span>
+            </div>
+            <div class="vent-bar"><span :style="{ width: v.score + '%' }"></span></div>
+            <div class="vent-why">
+              <span>초미세 {{ v.pm25 }}㎍/㎥ (−{{ v.reason.dust }})</span>
+              <span>강수 {{ v.pop }}% (−{{ v.reason.rain }})</span>
+              <span
+                >{{ configStore.convertTemp(v.temp) }}{{ configStore.unitSymbol }} (−{{
+                  v.reason.temp
+                }})</span
+              >
+              <span>바람 {{ v.wind }}m/s (+{{ v.reason.wind }})</span>
+            </div>
+          </li>
+        </ul>
+      </section>
+
       <section v-if="weatherStore.availableDates(city.id).length" class="forecast">
         <div class="fc-head">
           <h3>⏱️ {{ dateLabel }}</h3>
@@ -253,6 +299,84 @@ const displayFeels = computed(() =>
 </template>
 
 <style scoped>
+.vent {
+  margin-top: 22px;
+}
+.vent h3 {
+  font-size: 1rem;
+  font-weight: 650;
+}
+.vent-sub {
+  font-size: 0.78rem;
+  opacity: 0.65;
+  margin: 4px 0 12px;
+}
+.vent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.vent-item {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+.vent-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.vent-time {
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.vent-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.v1 {
+  background: rgba(6, 182, 212, 0.18);
+  color: #0369a1;
+}
+.v2 {
+  background: rgba(34, 197, 94, 0.18);
+  color: #15803d;
+}
+.v3 {
+  background: rgba(234, 179, 8, 0.2);
+  color: #a16207;
+}
+.v4 {
+  background: rgba(239, 68, 68, 0.18);
+  color: #b91c1c;
+}
+/* 점수를 숫자로만 두면 감이 안 온다. 막대로 같이 보여준다. */
+.vent-bar {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(127, 127, 127, 0.16);
+  margin: 9px 0 8px;
+  overflow: hidden;
+}
+.vent-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #06b6d4, #22c55e);
+}
+.vent-why {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.72rem;
+  opacity: 0.7;
+  font-variant-numeric: tabular-nums;
+}
 .aqi {
   padding: 1px 9px;
   border-radius: 999px;
